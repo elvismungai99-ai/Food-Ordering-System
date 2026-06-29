@@ -1,4 +1,4 @@
-package com.foodordering.user.entity;
+package com.foodordering.User.entity;
 
 public class role {
 }

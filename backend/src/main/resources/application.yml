@@ -2,7 +2,7 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/food_ordering
+    url: jdbc:postgresql://localhost:5432/Food_Ordering_db
     username: food_user
     password: foodie123
     driver-class-name: org.postgresql.Driver

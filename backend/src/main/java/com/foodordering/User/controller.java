@@ -1,4 +1,4 @@
-package com.foodordering.user;
+package com.foodordering.User;
 
-public class controller {
+public class Controller {
 }
