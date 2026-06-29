@@ -3,8 +3,8 @@ spring:
     name: backend
   datasource:
     url: jdbc:postgresql://localhost:5432/food_ordering
-    username: postgres
-    password: postgres
+    username: food_user
+    password: foodie123
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
