@@ -11,31 +11,25 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const response = await login(formData);
+      const data = await login(formData);
 
-      // Save token and user to localStorage
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-
-      // Redirect based on role
-       if (data.role === "CUSTOMER") {
+      if (data.role === "CUSTOMER") {
         navigate("/customer/dashboard");
-        } else if (data.role === "RESTAURANT_ADMIN") {
+      } else if (data.role === "RESTAURANT_ADMIN") {
         navigate("/restaurant/dashboard");
-        }else {
-            navigate("/");
-        }
+      } else {
+        navigate("/");
+      }
     } catch (err) {
-        setError("Login failed. Please check your credentials and try again.");
-        console.error(err);
+      setError("Login failed. Please check your credentials and try again.");
+      console.error(err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
 };
 

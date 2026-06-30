@@ -1,6 +1,5 @@
 import api from "../api/axios"; 
 
-// Types
 interface LoginData {
   email: string;
   password: string;
