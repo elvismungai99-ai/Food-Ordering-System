@@ -11,7 +11,7 @@ public class MenuItemDto {
     private String description;
     private BigDecimal price;
     private String category;
-    private boolean available;
+    private Boolean available;
     private String imageUrl;
 
     public MenuItemDto() {
@@ -76,11 +76,15 @@ public class MenuItemDto {
         this.category = category;
     }
 
-    public boolean isAvailable() {
+    public Boolean getAvailable() {
         return available;
     }
 
-    public void setAvailable(boolean available) {
+    public boolean isAvailable() {
+        return Boolean.TRUE.equals(available);
+    }
+
+    public void setAvailable(Boolean available) {
         this.available = available;
     }
 

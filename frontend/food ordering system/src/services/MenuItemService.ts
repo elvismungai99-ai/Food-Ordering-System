@@ -4,32 +4,68 @@ export interface MenuItem {
   id: string;
   restaurantId: string;
   name: string;
-  description: string;
+  description?: string | null;
   price: number;
-  category: string;
+  category?: string | null;
   available: boolean;
-  imageUrl: string;
+  imageUrl?: string | null;
 }
 
-const authHeader = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-});
+export interface CreateMenuItemRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  category?: string | null;
+  available: boolean;
+  imageUrl?: string | null;
+}
 
-export const getMenuByRestaurant = async (restaurantId: string): Promise<MenuItem[]> => {
-  const response = await api.get(`/menu-items/restaurant/${restaurantId}`);
+export interface UpdateMenuItemRequest {
+  name?: string;
+  description?: string | null;
+  price?: number;
+  category?: string | null;
+  available?: boolean;
+  imageUrl?: string | null;
+}
+
+export async function getRestaurantMenu(
+  restaurantId: string
+): Promise<MenuItem[]> {
+  const response = await api.get<MenuItem[]>(
+    `/menu-items/restaurant/${restaurantId}`
+  );
+
   return response.data;
-};
+}
 
-export const createMenuItem = async (item: Partial<MenuItem>): Promise<MenuItem> => {
-  const response = await api.post("/menu-items", item, authHeader());
+export async function createMenuItem(
+  request: CreateMenuItemRequest
+): Promise<MenuItem> {
+  const response = await api.post<MenuItem>(
+    "/menu-items",
+    request
+  );
+
   return response.data;
-};
+}
 
-export const updateMenuItem = async (id: string, item: Partial<MenuItem>): Promise<MenuItem> => {
-  const response = await api.put(`/menu-items/${id}`, item, authHeader());
+export async function updateMenuItem(
+  menuItemId: string,
+  request: UpdateMenuItemRequest
+): Promise<MenuItem> {
+  const response = await api.put<MenuItem>(
+    `/menu-items/${menuItemId}`,
+    request
+  );
+
   return response.data;
-};
+}
 
-export const deleteMenuItem = async (id: string): Promise<void> => {
-  await api.delete(`/menu-items/${id}`, authHeader());
-};
+export async function deleteMenuItem(
+  menuItemId: string
+): Promise<void> {
+  await api.delete(
+    `/menu-items/${menuItemId}`
+  );
+}
