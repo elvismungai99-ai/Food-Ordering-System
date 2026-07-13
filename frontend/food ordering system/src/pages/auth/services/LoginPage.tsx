@@ -11,17 +11,22 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
- const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       const data = await login(formData);
+      console.log("Login response:", data);
+      console.log("Role:", data.role);
+      console.log("localStorage role:", localStorage.getItem("role"));
 
       if (data.role === "CUSTOMER") {
         navigate("/customer/dashboard");
-      } else if (data.role === "RESTAURANT_ADMIN") {
+      } else if (data.role === "OWNER") {
         navigate("/restaurant/dashboard");
+      } else if (data.role === "SUPER_ADMIN") {
+        navigate("/admin/dashboard");
       } else {
         navigate("/");
       }
@@ -31,7 +36,7 @@ function LoginPage() {
     } finally {
       setLoading(false);
     }
-};
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-10 flex items-center justify-center">

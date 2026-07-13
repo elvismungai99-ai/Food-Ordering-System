@@ -12,6 +12,7 @@ public class RestaurantDto {
     private LocalTime openingTime;
     private LocalTime closingTime;
     private String status;
+    private String category;
 
     public RestaurantDto() {
     }
@@ -24,6 +25,7 @@ public class RestaurantDto {
         this.openingTime = restaurant.getOpeningTime();
         this.closingTime = restaurant.getClosingTime();
         this.status = restaurant.getStatus();
+        this.category = restaurant.getCategory();
     }
 
     public UUID getId() {
@@ -80,5 +82,13 @@ public class RestaurantDto {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

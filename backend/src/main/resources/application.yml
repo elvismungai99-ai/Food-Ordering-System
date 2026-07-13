@@ -13,5 +13,9 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+
 server:
-  port: 8081
+  port: 8080
+
+jwt:
+  secret: f00d0rd3r1ng$yst3mS3cr3tK3y2026!!SecureKey32Chars

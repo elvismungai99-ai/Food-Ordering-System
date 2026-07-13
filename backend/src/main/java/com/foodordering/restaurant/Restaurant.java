@@ -3,9 +3,11 @@ package com.foodordering.restaurant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -16,47 +18,48 @@ import jakarta.persistence.Table;
 public class Restaurant {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "owner_id", nullable = false)
+    @Column(nullable = false)
     private UUID ownerId;
 
-    @Column(name = "name", nullable = false)
+    @Column(nullable = false)
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "address", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "opening_time")
     private LocalTime openingTime;
 
-    @Column(name = "closing_time")
     private LocalTime closingTime;
 
-    @Column(name = "status")
     private String status;
 
-    @Column(name = "created_at")
+    private String category;
+
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    public Restaurant() {
+    }
+
     @PrePersist
-    protected void onCreate() {
+    public void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
         if (status == null) {
-            status = "PENDING";
+            status = "OPEN";
         }
     }
 
     @PreUpdate
-    protected void onUpdate() {
+    public void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 
@@ -122,6 +125,14 @@ public class Restaurant {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 
     public LocalDateTime getCreatedAt() {

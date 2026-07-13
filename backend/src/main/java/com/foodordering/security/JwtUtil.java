@@ -5,19 +5,22 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtUtil {
 
-    // In production, move this to application.properties / environment variable
-    private final SecretKey secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final SecretKey secretKey;
 
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 24; // 24 hours
+
+    public JwtUtil(@Value("${jwt.secret}") String secret) {
+        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes());
+    }
 
     public String generateToken(UUID userId, String email, String role) {
         return Jwts.builder()
@@ -29,7 +32,16 @@ public class JwtUtil {
                 .signWith(secretKey)
                 .compact();
     }
-   public UUID extractUserId(String token) {
+    public String extractRole(String token) {
+    return Jwts.parser()
+            .verifyWith(secretKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload()
+            .get("role", String.class);
+    }
+
+    public UUID extractUserId(String token) {
         String subject = Jwts.parser()
                 .verifyWith(secretKey)
                 .build()

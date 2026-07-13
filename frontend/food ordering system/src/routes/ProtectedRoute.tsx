@@ -1,19 +1,43 @@
-import { Navigate, Outlet } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+} from "react-router-dom";
 
 interface ProtectedRouteProps {
   allowedRoles: string[];
 }
 
-function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+function ProtectedRoute({
+  allowedRoles,
+}: ProtectedRouteProps) {
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
 
-  if (!token || !role) {
-    return <Navigate to="/login" replace />;
+  const storedRole =
+    localStorage.getItem("role");
+
+  const role = storedRole
+    ?.replace("ROLE_", "")
+    .toUpperCase();
+
+  if (!token) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
-  if (!allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+  if (
+    !role ||
+    !allowedRoles.includes(role)
+  ) {
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
   }
 
   return <Outlet />;

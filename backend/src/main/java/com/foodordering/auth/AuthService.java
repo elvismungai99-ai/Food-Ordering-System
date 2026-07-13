@@ -1,19 +1,21 @@
 package com.foodordering.auth;
 
-import com.foodordering.User.entity.User;
-import com.foodordering.User.repository.UserRepository;
-import com.foodordering.security.Jwt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.foodordering.User.entity.Role;
+import com.foodordering.User.entity.User;
+import com.foodordering.User.repository.UserRepository;
+import com.foodordering.security.JwtUtil;
 
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final Jwt jwtUtil;
+    private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AuthService(UserRepository userRepository, Jwt jwtUtil) {
+    public AuthService(UserRepository userRepository, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
     }
@@ -23,13 +25,21 @@ public class AuthService {
             throw new RuntimeException("Email is already registered");
         }
 
+        String requestedRole = request.getRole();
+        String finalRole;
+        if (Role.CUSTOMER.equals(requestedRole) || Role.OWNER.equals(requestedRole)) {
+            finalRole = requestedRole;
+        } else {
+            finalRole = Role.CUSTOMER; // safe default — blocks SUPER_ADMIN or any invalid value
+        }
+
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setFullName(request.getFirstName() + " " + request.getLastName());
-        user.setRole(request.getRole() != null ? request.getRole() : "CUSTOMER");
+        user.setRole(finalRole);
         user.setActive(true);
 
         User savedUser = userRepository.save(user);

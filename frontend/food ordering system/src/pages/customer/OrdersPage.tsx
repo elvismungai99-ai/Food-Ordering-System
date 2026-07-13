@@ -1,73 +1,47 @@
-interface Order {
-  id: number;
-  restaurant: string;
-  items: string[];
-  total: number;
-  status: "Pending" | "Preparing" | "Delivered" | "Cancelled";
-  date: string;
-}
+import { useNavigate } from "react-router-dom";
+
+import CustomerHeader from "../../components/customer/CustomerHeader";
 
 function OrdersPage() {
-  const orders: Order[] = [
-    {
-      id: 101,
-      restaurant: "Mama's Kitchen",
-      items: ["Margherita Pizza", "Garlic Bread"],
-      total: 18.49,
-      status: "Delivered",
-      date: "2026-06-25",
-    },
-    {
-      id: 102,
-      restaurant: "Burger Hub",
-      items: ["Chicken Burger", "Fries"],
-      total: 11.0,
-      status: "Preparing",
-      date: "2026-06-29",
-    },
-  ];
-
-  const statusColor: Record<Order["status"], string> = {
-    Pending: "bg-yellow-100 text-yellow-700",
-    Preparing: "bg-indigo-100 text-indigo-700",
-    Delivered: "bg-teal-100 text-teal-700",
-    Cancelled: "bg-red-100 text-red-700",
-  };
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-semibold text-slate-950 mb-6">My Orders</h1>
+    <div className="min-h-screen bg-slate-100">
+      <CustomerHeader />
 
-        {orders.length === 0 ? (
-          <div className="rounded-[24px] bg-white p-8 text-center border border-slate-200">
-            <p className="text-slate-500">You have no orders yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className="rounded-[24px] bg-white p-5 border border-slate-200 shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-slate-900">{order.restaurant}</p>
-                  <span
-                    className={`text-xs font-semibold px-3 py-1 rounded-full ${statusColor[order.status]}`}
-                  >
-                    {order.status}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500">{order.items.join(", ")}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-xs text-slate-400">{order.date}</p>
-                  <p className="font-semibold text-slate-900">${order.total.toFixed(2)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-950">
+            Your Orders
+          </h1>
+
+          <p className="mt-2 text-slate-500">
+            View and track your food orders.
+          </p>
+        </div>
+
+        <section className="mt-8 rounded-[24px] border border-slate-200 bg-white p-12 text-center">
+          <div className="text-5xl">📦</div>
+
+          <h2 className="mt-5 text-xl font-semibold text-slate-900">
+            No orders available
+          </h2>
+
+          <p className="mt-2 text-slate-500">
+            Your placed orders will appear here.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/customer/restaurants")
+            }
+            className="mt-6 rounded-3xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white"
+          >
+            Browse restaurants
+          </button>
+        </section>
+      </main>
     </div>
   );
 }

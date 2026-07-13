@@ -104,7 +104,7 @@ function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             >
               <option value="CUSTOMER">CUSTOMER</option>
-              <option value="RESTAURANT_ADMIN">RESTAURANT_ADMIN</option>
+              <option value="OWNER">OWNER</option>
             </select>
           </label>
 
