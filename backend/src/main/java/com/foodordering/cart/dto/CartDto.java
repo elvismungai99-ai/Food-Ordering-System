@@ -9,9 +9,26 @@ public class CartDto {
 
     private UUID id;
     private UUID customerId;
-    private List<CartItemDto> items = new ArrayList<>();
+
+    private List<CartItemDto> items =
+            new ArrayList<>();
+
     private Integer totalItems;
+
+    /*
+     * Total using the prices stored in cart_items.
+     */
+    private BigDecimal previousTotalAmount;
+
+    /*
+     * Total using current menu prices.
+     * This is the amount that will be charged
+     * after the customer accepts the changes.
+     */
     private BigDecimal totalAmount;
+
+    private boolean hasPriceChanges;
+    private boolean hasUnavailableItems;
 
     public CartDto() {
     }
@@ -36,7 +53,9 @@ public class CartDto {
         return items;
     }
 
-    public void setItems(List<CartItemDto> items) {
+    public void setItems(
+            List<CartItemDto> items
+    ) {
         this.items = items;
     }
 
@@ -44,15 +63,52 @@ public class CartDto {
         return totalItems;
     }
 
-    public void setTotalItems(Integer totalItems) {
+    public void setTotalItems(
+            Integer totalItems
+    ) {
         this.totalItems = totalItems;
+    }
+
+    public BigDecimal getPreviousTotalAmount() {
+        return previousTotalAmount;
+    }
+
+    public void setPreviousTotalAmount(
+            BigDecimal previousTotalAmount
+    ) {
+        this.previousTotalAmount =
+                previousTotalAmount;
     }
 
     public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
-    public void setTotalAmount(BigDecimal totalAmount) {
+    public void setTotalAmount(
+            BigDecimal totalAmount
+    ) {
         this.totalAmount = totalAmount;
+    }
+
+    public boolean isHasPriceChanges() {
+        return hasPriceChanges;
+    }
+
+    public void setHasPriceChanges(
+            boolean hasPriceChanges
+    ) {
+        this.hasPriceChanges =
+                hasPriceChanges;
+    }
+
+    public boolean isHasUnavailableItems() {
+        return hasUnavailableItems;
+    }
+
+    public void setHasUnavailableItems(
+            boolean hasUnavailableItems
+    ) {
+        this.hasUnavailableItems =
+                hasUnavailableItems;
     }
 }

@@ -33,7 +33,9 @@ public class CartController {
         this.jwtUtil = jwtUtil;
     }
 
-    // View the logged-in customer's cart.
+    /*
+     * Returns the cart and identifies all price changes.
+     */
     @GetMapping
     public ResponseEntity<?> getCart(
             @RequestHeader("Authorization")
@@ -54,7 +56,6 @@ public class CartController {
         }
     }
 
-    // Add a menu item to the logged-in customer's cart.
     @PostMapping("/items")
     public ResponseEntity<?> addItem(
             @RequestHeader("Authorization")
@@ -81,7 +82,6 @@ public class CartController {
         }
     }
 
-    // Change the quantity of one cart item.
     @PatchMapping("/items/{cartItemId}")
     public ResponseEntity<?> updateQuantity(
             @RequestHeader("Authorization")
@@ -112,7 +112,6 @@ public class CartController {
         }
     }
 
-    // Remove one cart item.
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<?> removeItem(
             @RequestHeader("Authorization")
@@ -139,7 +138,35 @@ public class CartController {
         }
     }
 
-    private UUID extractUserId(String authHeader) {
+    /*
+     * Customer confirms that they accept all
+     * current restaurant prices.
+     */
+    @PostMapping("/accept-price-changes")
+    public ResponseEntity<?> acceptPriceChanges(
+            @RequestHeader("Authorization")
+            String authHeader
+    ) {
+        try {
+            UUID customerId =
+                    extractUserId(authHeader);
+
+            CartDto cart =
+                    cartService.acceptCurrentPrices(
+                            customerId
+                    );
+
+            return ResponseEntity.ok(cart);
+
+        } catch (RuntimeException exception) {
+            return ResponseEntity.badRequest()
+                    .body(exception.getMessage());
+        }
+    }
+
+    private UUID extractUserId(
+            String authHeader
+    ) {
         if (
                 authHeader == null
                 || !authHeader.startsWith("Bearer ")
@@ -149,7 +176,8 @@ public class CartController {
             );
         }
 
-        String token = authHeader.substring(7);
+        String token =
+                authHeader.substring(7);
 
         return jwtUtil.extractUserId(token);
     }

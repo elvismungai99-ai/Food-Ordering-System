@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import {
+  acceptCartPriceChanges,
   addCartItem,
   getCart,
   removeCartItem,
@@ -19,6 +20,7 @@ import {
 interface CartContextValue {
   cart: Cart | null;
   totalItems: number;
+
   loading: boolean;
   error: string;
 
@@ -37,6 +39,9 @@ interface CartContextValue {
   removeItem: (
     cartItemId: string
   ) => Promise<void>;
+
+  acceptPriceChanges:
+    () => Promise<void>;
 
   clearCartState: () => void;
 }
@@ -62,128 +67,147 @@ export function CartProvider({
   const [error, setError] =
     useState("");
 
-  const clearCartState = useCallback(() => {
-    setCart(null);
-    setError("");
-  }, []);
-
-  const refreshCart = useCallback(async () => {
-    const token =
-      localStorage.getItem("token");
-
-    const role =
-      localStorage.getItem("role");
-
-    if (!token || role !== "CUSTOMER") {
-      clearCartState();
-      return;
-    }
-
-    try {
-      setLoading(true);
+  const clearCartState =
+    useCallback(() => {
+      setCart(null);
       setError("");
+    }, []);
 
-      const cartData = await getCart();
+  const refreshCart =
+    useCallback(async () => {
+      const token =
+        localStorage.getItem("token");
 
-      setCart(cartData);
-    } catch (requestError) {
-      console.error(
-        "Failed to load cart",
-        requestError
-      );
+      const role =
+        localStorage.getItem("role");
 
-      setError("Unable to load your cart.");
-    } finally {
-      setLoading(false);
-    }
-  }, [clearCartState]);
+      if (
+        !token
+        || role !== "CUSTOMER"
+      ) {
+        clearCartState();
+        return;
+      }
 
-  const addToCart = useCallback(
-    async (
-      menuItemId: string,
-      quantity = 1
-    ) => {
       try {
+        setLoading(true);
         setError("");
 
-        const updatedCart =
-          await addCartItem({
-            menuItemId,
-            quantity,
-          });
+        const cartData =
+          await getCart();
 
-        setCart(updatedCart);
+        setCart(cartData);
       } catch (requestError) {
         console.error(
-          "Failed to add item to cart",
+          "Failed to load cart",
           requestError
         );
 
         setError(
-          "Unable to add this item to your cart."
+          "Unable to load your cart."
         );
-
-        throw requestError;
+      } finally {
+        setLoading(false);
       }
-    },
-    []
-  );
+    }, [clearCartState]);
 
-  const updateQuantity = useCallback(
-    async (
-      cartItemId: string,
-      quantity: number
-    ) => {
-      try {
-        setError("");
+  const addToCart =
+    useCallback(
+      async (
+        menuItemId: string,
+        quantity = 1
+      ) => {
+        try {
+          setError("");
 
-        const updatedCart =
-          await updateCartItemQuantity(
-            cartItemId,
-            quantity
+          const updatedCart =
+            await addCartItem({
+              menuItemId,
+              quantity,
+            });
+
+          setCart(updatedCart);
+        } catch (requestError) {
+          setError(
+            "Unable to add this item to your cart."
           );
 
-        setCart(updatedCart);
-      } catch (requestError) {
-        console.error(
-          "Failed to update cart quantity",
-          requestError
-        );
+          throw requestError;
+        }
+      },
+      []
+    );
 
-        setError(
-          "Unable to update the item quantity."
-        );
+  const updateQuantity =
+    useCallback(
+      async (
+        cartItemId: string,
+        quantity: number
+      ) => {
+        try {
+          setError("");
 
-        throw requestError;
-      }
-    },
-    []
-  );
+          const updatedCart =
+            await updateCartItemQuantity(
+              cartItemId,
+              quantity
+            );
 
-  const removeItem = useCallback(
-    async (cartItemId: string) => {
+          setCart(updatedCart);
+        } catch (requestError) {
+          setError(
+            "Unable to update the item quantity."
+          );
+
+          throw requestError;
+        }
+      },
+      []
+    );
+
+  const removeItem =
+    useCallback(
+      async (cartItemId: string) => {
+        try {
+          setError("");
+
+          const updatedCart =
+            await removeCartItem(
+              cartItemId
+            );
+
+          setCart(updatedCart);
+        } catch (requestError) {
+          setError(
+            "Unable to remove the cart item."
+          );
+
+          throw requestError;
+        }
+      },
+      []
+    );
+
+  const acceptPriceChanges =
+    useCallback(async () => {
       try {
+        setLoading(true);
         setError("");
 
         const updatedCart =
-          await removeCartItem(cartItemId);
+          await acceptCartPriceChanges();
 
         setCart(updatedCart);
       } catch (requestError) {
-        console.error(
-          "Failed to remove cart item",
-          requestError
-        );
-
         setError(
-          "Unable to remove the cart item."
+          "Unable to accept the updated prices."
         );
 
         throw requestError;
+      } finally {
+        setLoading(false);
       }
-    },
-    []
-  );
+    }, []);
 
   useEffect(() => {
     refreshCart();
@@ -192,13 +216,15 @@ export function CartProvider({
   const value = useMemo(
     () => ({
       cart,
-      totalItems: cart?.totalItems ?? 0,
+      totalItems:
+        cart?.totalItems ?? 0,
       loading,
       error,
       refreshCart,
       addToCart,
       updateQuantity,
       removeItem,
+      acceptPriceChanges,
       clearCartState,
     }),
     [
@@ -209,19 +235,24 @@ export function CartProvider({
       addToCart,
       updateQuantity,
       removeItem,
+      acceptPriceChanges,
       clearCartState,
     ]
   );
 
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider
+      value={value}
+    >
       {children}
     </CartContext.Provider>
   );
 }
 
-export function useCart(): CartContextValue {
-  const context = useContext(CartContext);
+export function useCart():
+CartContextValue {
+  const context =
+    useContext(CartContext);
 
   if (!context) {
     throw new Error(

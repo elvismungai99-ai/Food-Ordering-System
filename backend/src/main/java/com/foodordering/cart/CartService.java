@@ -33,6 +33,13 @@ public class CartService {
         this.menuItemRepository = menuItemRepository;
     }
 
+    /*
+     * Viewing the cart automatically checks whether
+     * any restaurant menu prices have changed.
+     *
+     * It does not overwrite the stored cart price.
+     */
+    @Transactional(readOnly = true)
     public CartDto getCart(UUID customerId) {
         Cart cart = getOrCreateCart(customerId);
 
@@ -50,7 +57,9 @@ public class CartService {
         MenuItem menuItem = menuItemRepository
                 .findById(request.getMenuItemId())
                 .orElseThrow(() ->
-                        new RuntimeException("Menu item not found")
+                        new RuntimeException(
+                                "Menu item not found"
+                        )
                 );
 
         if (!menuItem.isAvailable()) {
@@ -69,32 +78,33 @@ public class CartService {
         if (existingItem != null) {
             int newQuantity =
                     existingItem.getQuantity()
-                            + request.getQuantity();
+                    + request.getQuantity();
 
             existingItem.setQuantity(newQuantity);
-            existingItem.setUnitPrice(menuItem.getPrice());
 
+            /*
+             * Do not silently overwrite an older cart price.
+             * The difference must remain visible to the customer.
+             */
             cartItemRepository.save(existingItem);
+
         } else {
-            CartItem cartItem = new CartItem();
+            CartItem newItem = new CartItem();
 
-            cartItem.setCart(cart);
-            cartItem.setMenuItemId(menuItem.getId());
-            cartItem.setQuantity(request.getQuantity());
-            cartItem.setUnitPrice(menuItem.getPrice());
+            newItem.setCart(cart);
+            newItem.setMenuItemId(menuItem.getId());
+            newItem.setQuantity(request.getQuantity());
 
-            cart.addItem(cartItem);
+            /*
+             * Store a snapshot of the price when first added.
+             */
+            newItem.setUnitPrice(menuItem.getPrice());
 
+            cart.addItem(newItem);
             cartRepository.save(cart);
         }
 
-        Cart refreshedCart = cartRepository
-                .findWithItemsByCustomerId(customerId)
-                .orElseThrow(() ->
-                        new RuntimeException("Cart not found")
-                );
-
-        return convertToDto(refreshedCart);
+        return getRefreshedCart(customerId);
     }
 
     public CartDto updateQuantity(
@@ -119,24 +129,23 @@ public class CartService {
                         cart.getId()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Cart item not found")
+                        new RuntimeException(
+                                "Cart item not found"
+                        )
                 );
 
         if (request.getQuantity() <= 0) {
             cart.removeItem(cartItem);
             cartItemRepository.delete(cartItem);
         } else {
-            cartItem.setQuantity(request.getQuantity());
+            cartItem.setQuantity(
+                    request.getQuantity()
+            );
+
             cartItemRepository.save(cartItem);
         }
 
-        Cart refreshedCart = cartRepository
-                .findWithItemsByCustomerId(customerId)
-                .orElseThrow(() ->
-                        new RuntimeException("Cart not found")
-                );
-
-        return convertToDto(refreshedCart);
+        return getRefreshedCart(customerId);
     }
 
     public CartDto removeItem(
@@ -151,24 +160,61 @@ public class CartService {
                         cart.getId()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("Cart item not found")
+                        new RuntimeException(
+                                "Cart item not found"
+                        )
                 );
 
         cart.removeItem(cartItem);
         cartItemRepository.delete(cartItem);
 
-        Cart refreshedCart = cartRepository
-                .findWithItemsByCustomerId(customerId)
-                .orElseThrow(() ->
-                        new RuntimeException("Cart not found")
-                );
-
-        return convertToDto(refreshedCart);
+        return getRefreshedCart(customerId);
     }
 
-    private Cart getOrCreateCart(UUID customerId) {
+    /*
+     * Called after the customer has reviewed and
+     * accepted all changed prices.
+     */
+    public CartDto acceptCurrentPrices(
+            UUID customerId
+    ) {
+        Cart cart = getExistingCart(customerId);
+
+        for (CartItem cartItem : cart.getItems()) {
+            MenuItem menuItem = menuItemRepository
+                    .findById(
+                            cartItem.getMenuItemId()
+                    )
+                    .orElseThrow(() ->
+                            new RuntimeException(
+                                    "A menu item in your cart no longer exists"
+                            )
+                    );
+
+            if (!menuItem.isAvailable()) {
+                throw new RuntimeException(
+                        menuItem.getName()
+                        + " is no longer available"
+                );
+            }
+
+            cartItem.setUnitPrice(
+                    menuItem.getPrice()
+            );
+        }
+
+        cartRepository.save(cart);
+
+        return getRefreshedCart(customerId);
+    }
+
+    private Cart getOrCreateCart(
+            UUID customerId
+    ) {
         return cartRepository
-                .findWithItemsByCustomerId(customerId)
+                .findWithItemsByCustomerId(
+                        customerId
+                )
                 .orElseGet(() -> {
                     Cart cart = new Cart();
                     cart.setCustomerId(customerId);
@@ -177,14 +223,34 @@ public class CartService {
                 });
     }
 
-    private Cart getExistingCart(UUID customerId) {
+    private Cart getExistingCart(
+            UUID customerId
+    ) {
         return cartRepository
-                .findWithItemsByCustomerId(customerId)
+                .findWithItemsByCustomerId(
+                        customerId
+                )
                 .orElseThrow(() ->
                         new RuntimeException(
                                 "Cart not found for this customer"
                         )
                 );
+    }
+
+    private CartDto getRefreshedCart(
+            UUID customerId
+    ) {
+        Cart cart = cartRepository
+                .findWithItemsByCustomerId(
+                        customerId
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Cart not found"
+                        )
+                );
+
+        return convertToDto(cart);
     }
 
     private void validateAddItemRequest(
@@ -216,18 +282,29 @@ public class CartService {
         CartDto dto = new CartDto();
 
         dto.setId(cart.getId());
-        dto.setCustomerId(cart.getCustomerId());
+        dto.setCustomerId(
+                cart.getCustomerId()
+        );
 
         List<CartItemDto> itemDtos =
                 new ArrayList<>();
 
         int totalItems = 0;
-        BigDecimal totalAmount =
+
+        BigDecimal previousTotal =
                 BigDecimal.ZERO;
+
+        BigDecimal currentTotal =
+                BigDecimal.ZERO;
+
+        boolean hasPriceChanges = false;
+        boolean hasUnavailableItems = false;
 
         for (CartItem cartItem : cart.getItems()) {
             MenuItem menuItem = menuItemRepository
-                    .findById(cartItem.getMenuItemId())
+                    .findById(
+                            cartItem.getMenuItemId()
+                    )
                     .orElse(null);
 
             CartItemDto itemDto =
@@ -240,14 +317,39 @@ public class CartService {
 
             totalItems += cartItem.getQuantity();
 
-            totalAmount = totalAmount.add(
-                    cartItem.calculateSubtotal()
+            previousTotal = previousTotal.add(
+                    itemDto.getSubtotal()
             );
+
+            currentTotal = currentTotal.add(
+                    itemDto.getCurrentSubtotal()
+            );
+
+            if (itemDto.isPriceChanged()) {
+                hasPriceChanges = true;
+            }
+
+            if (!itemDto.isAvailable()) {
+                hasUnavailableItems = true;
+            }
         }
 
         dto.setItems(itemDtos);
         dto.setTotalItems(totalItems);
-        dto.setTotalAmount(totalAmount);
+
+        dto.setPreviousTotalAmount(
+                previousTotal
+        );
+
+        dto.setTotalAmount(currentTotal);
+
+        dto.setHasPriceChanges(
+                hasPriceChanges
+        );
+
+        dto.setHasUnavailableItems(
+                hasUnavailableItems
+        );
 
         return dto;
     }
