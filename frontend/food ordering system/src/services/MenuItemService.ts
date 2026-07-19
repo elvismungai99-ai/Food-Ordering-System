@@ -4,68 +4,92 @@ export interface MenuItem {
   id: string;
   restaurantId: string;
   name: string;
-  description?: string | null;
+  description: string;
   price: number;
-  category?: string | null;
+  category: string;
   available: boolean;
   imageUrl?: string | null;
 }
 
-export interface CreateMenuItemRequest {
+export interface MenuItemRequest {
   name: string;
-  description?: string | null;
+  description?: string;
   price: number;
-  category?: string | null;
+  category?: string;
   available: boolean;
   imageUrl?: string | null;
 }
 
-export interface UpdateMenuItemRequest {
-  name?: string;
-  description?: string | null;
-  price?: number;
-  category?: string | null;
-  available?: boolean;
-  imageUrl?: string | null;
-}
-
-export async function getRestaurantMenu(
+/*
+ * Customer:
+ * Get menu items for a specific restaurant.
+ */
+export const getMenuByRestaurant = async (
   restaurantId: string
-): Promise<MenuItem[]> {
+): Promise<MenuItem[]> => {
   const response = await api.get<MenuItem[]>(
     `/menu-items/restaurant/${restaurantId}`
   );
 
   return response.data;
-}
+};
 
-export async function createMenuItem(
-  request: CreateMenuItemRequest
-): Promise<MenuItem> {
+/*
+ * Restaurant owner:
+ * Get their restaurant menu.
+ *
+ * This currently uses the same backend endpoint
+ * when a restaurantId is supplied.
+ */
+export const getRestaurantMenu = async (
+  restaurantId: string
+): Promise<MenuItem[]> => {
+  const response = await api.get<MenuItem[]>(
+    `/menu-items/restaurant/${restaurantId}`
+  );
+
+  return response.data;
+};
+
+/*
+ * Restaurant owner:
+ * Create a menu item.
+ */
+export const createMenuItem = async (
+  menuItem: MenuItemRequest
+): Promise<MenuItem> => {
   const response = await api.post<MenuItem>(
     "/menu-items",
-    request
+    menuItem
   );
 
   return response.data;
-}
+};
 
-export async function updateMenuItem(
+/*
+ * Restaurant owner:
+ * Update a menu item.
+ */
+export const updateMenuItem = async (
   menuItemId: string,
-  request: UpdateMenuItemRequest
-): Promise<MenuItem> {
+  menuItem: Partial<MenuItemRequest>
+): Promise<MenuItem> => {
   const response = await api.put<MenuItem>(
     `/menu-items/${menuItemId}`,
-    request
+    menuItem
   );
 
   return response.data;
-}
+};
 
-export async function deleteMenuItem(
+/*
+ * Restaurant owner:
+ * Delete a menu item.
+ */
+export const deleteMenuItem = async (
   menuItemId: string
-): Promise<void> {
+): Promise<void> => {
   await api.delete(
     `/menu-items/${menuItemId}`
   );
-}
+};

@@ -13,8 +13,12 @@ import CartPage from "./pages/customer/CartPage";
 import OrdersPage from "./pages/customer/OrdersPage";
 import ProfilePage from "./pages/customer/CustomerProfilePage";
 import RestaurantPage from "./pages/customer/RestaurantPage";
+import RestaurantMenuPage from "./pages/customer/RestaurantMenuPage";
 import RestaurantDetailsPage from "./pages/customer/RestaurantDetailsPage";
-
+import CheckoutPage from "./pages/customer/CheckoutPage";
+import PaymentSimulationPage from "./pages/customer/PaymentSimulationPage";
+import RestaurantOrdersPage from "./pages/restaurant/RestaurantOrdersPage";
+import OrderDetailPage from "./pages/customer/OrderDetailPage";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import MenuPage from "./pages/restaurant/MenuPage";
 import AnalyticsPage from "./pages/restaurant/AnalyticsPage";
@@ -22,14 +26,21 @@ import AnalyticsPage from "./pages/restaurant/AnalyticsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
-import { CartProvider } from "./context/CartContext";
+
+import {
+  CartProvider,
+} from "./context/CartContext";
 
 function App() {
   return (
     <BrowserRouter>
       <CartProvider>
         <Routes>
-          {/* Public routes */}
+
+          {/* ========================= */}
+          {/* PUBLIC ROUTES */}
+          {/* ========================= */}
+
           <Route
             path="/"
             element={<HomePage />}
@@ -45,92 +56,206 @@ function App() {
             element={<RegisterPage />}
           />
 
-          {/* Customer routes */}
+
+          {/* ========================= */}
+          {/* CUSTOMER ROUTES */}
+          {/* ========================= */}
+
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={["CUSTOMER"]}
+                allowedRoles={[
+                  "CUSTOMER",
+                ]}
               />
             }
           >
+
+            <Route
+              path="/customer/orders/:orderId"
+              element={
+                <OrderDetailPage />
+              }
+            />
+
             <Route
               path="/customer/dashboard"
-              element={<CustomerDashboard />}
+              element={
+                <CustomerDashboard />
+              }
             />
 
             <Route
               path="/customer/restaurants"
-              element={<RestaurantPage />}
+              element={
+                <RestaurantPage />
+              }
             />
 
             <Route
               path="/customer/restaurants/:restaurantId/menu"
-              element={<RestaurantDetailsPage />}
+              element={
+                <RestaurantMenuPage />
+              }
             />
 
             <Route
               path="/customer/restaurants/:restaurantId/details"
-              element={<RestaurantDetailsPage />}
+              element={
+                <RestaurantDetailsPage />
+              }
             />
+
+
+            {/* ========================= */}
+            {/* CART */}
+            {/* ========================= */}
 
             <Route
               path="/customer/cart"
-              element={<CartPage />}
+              element={
+                <CartPage />
+              }
             />
+
+
+            {/* ========================= */}
+            {/* CHECKOUT */}
+            {/* ========================= */}
+
+            <Route
+              path="/customer/checkout"
+              element={
+                <CheckoutPage />
+              }
+            />
+
+
+            {/* ========================= */}
+            {/* PAYMENT SIMULATION */}
+            {/* ========================= */}
+
+            <Route
+              path="/customer/payment"
+              element={
+                <PaymentSimulationPage />
+              }
+            />
+
+
+            {/* ========================= */}
+            {/* ORDERS */}
+            {/* ========================= */}
 
             <Route
               path="/customer/orders"
-              element={<OrdersPage />}
+              element={
+                <OrdersPage />
+              }
             />
+
+
+            {/* ========================= */}
+            {/* CUSTOMER PROFILE */}
+            {/* ========================= */}
 
             <Route
               path="/customer/profile"
-              element={<ProfilePage />}
+              element={
+                <ProfilePage />
+              }
             />
+
           </Route>
 
-          {/* Restaurant owner routes */}
+
+          {/* ========================= */}
+          {/* RESTAURANT OWNER ROUTES */}
+          {/* ========================= */}
+
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={["OWNER"]}
+                allowedRoles={[
+                  "OWNER",
+                ]}
               />
             }
           >
+
             <Route
               path="/restaurant/dashboard"
-              element={<RestaurantDashboard />}
+              element={
+                <RestaurantDashboard />
+              }
             />
 
             <Route
               path="/restaurant/menu"
-              element={<MenuPage />}
+              element={
+                <MenuPage />
+              }
             />
 
             <Route
               path="/restaurant/analytics"
-              element={<AnalyticsPage />}
+              element={
+                <AnalyticsPage />
+              }
             />
+
+            <Route
+              path="/restaurant/orders"
+              element={
+                <RestaurantOrdersPage />
+              }
+            />
+
+            <Route
+              path="/restaurant/:restaurantId/details"
+              element={
+                <RestaurantDetailsPage />
+              }
+            />
+
           </Route>
 
-          {/* Administrator routes */}
+
+          {/* ========================= */}
+          {/* SUPER ADMIN ROUTES */}
+          {/* ========================= */}
+
           <Route
             element={
               <ProtectedRoute
-                allowedRoles={["SUPER_ADMIN"]}
+                allowedRoles={[
+                  "SUPER_ADMIN",
+                ]}
               />
             }
           >
+
             <Route
               path="/admin/dashboard"
-              element={<AdminDashboard />}
+              element={
+                <AdminDashboard />
+              }
             />
+
           </Route>
+
+
+          {/* ========================= */}
+          {/* FALLBACK ROUTE */}
+          {/* ========================= */}
 
           <Route
             path="*"
-            element={<HomePage />}
+            element={
+              <HomePage />
+            }
           />
+
         </Routes>
       </CartProvider>
     </BrowserRouter>
