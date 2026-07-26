@@ -8,5 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MenuItemRepository
         extends JpaRepository<MenuItem, UUID> {
 
-    List<MenuItem> findByRestaurantId(UUID restaurantId);
+    List<MenuItem> findByRestaurant_Id(
+            UUID restaurantId
+    );
 }

@@ -1,4 +1,8 @@
 import api from "../api/axios";
+import {
+  requestData,
+  requestVoid,
+} from "./request";
 
 export interface Customer {
   id: string;
@@ -22,24 +26,30 @@ export interface Restaurant {
   ownerId: string;
 }
 
-const authHeader = () => ({
-  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-});
-
 export const getAllCustomers = async (): Promise<Customer[]> => {
-  const response = await api.get("/admin/customers", authHeader());
-  return response.data;
+  return requestData(
+    () => api.get<Customer[]>("/admin/customers"),
+    "Unable to load customers."
+  );
 };
 
 export const deleteCustomer = async (id: string): Promise<void> => {
-  await api.delete(`/admin/customers/${id}`, authHeader());
+  await requestVoid(
+    () => api.delete(`/admin/customers/${id}`),
+    "Unable to delete the customer."
+  );
 };
 
 export const getAllRestaurants = async (): Promise<Restaurant[]> => {
-  const response = await api.get("/admin/restaurants", authHeader());
-  return response.data;
+  return requestData(
+    () => api.get<Restaurant[]>("/admin/restaurants"),
+    "Unable to load restaurants."
+  );
 };
 
 export const deleteRestaurant = async (id: string): Promise<void> => {
-  await api.delete(`/admin/restaurants/${id}`, authHeader());
+  await requestVoid(
+    () => api.delete(`/admin/restaurants/${id}`),
+    "Unable to delete the restaurant."
+  );
 };

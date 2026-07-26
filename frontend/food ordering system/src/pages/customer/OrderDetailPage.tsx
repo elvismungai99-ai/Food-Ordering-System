@@ -380,6 +380,8 @@ function OrderDetailPage() {
                           item.itemName
                         }
                         className="h-20 w-20 rounded-2xl object-cover"
+                        loading="lazy"
+                        decoding="async"
                       />
 
                     ) : (

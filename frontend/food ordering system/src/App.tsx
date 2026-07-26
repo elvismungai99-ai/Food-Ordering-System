@@ -5,8 +5,10 @@ import {
 } from "react-router-dom";
 
 import HomePage from "./pages/auth/services/HomePage";
+import ForgotPasswordPage from "./pages/auth/services/ForgotPasswordPage";
 import LoginPage from "./pages/auth/services/LoginPage";
 import RegisterPage from "./pages/auth/services/RegisterPage";
+import ResetPasswordPage from "./pages/auth/services/ResetPasswordPage";
 
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import CartPage from "./pages/customer/CartPage";
@@ -22,6 +24,7 @@ import OrderDetailPage from "./pages/customer/OrderDetailPage";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import MenuPage from "./pages/restaurant/MenuPage";
 import AnalyticsPage from "./pages/restaurant/AnalyticsPage";
+import RestaurantProfilePage from "./pages/restaurant/RestaurantProfilePage";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
@@ -54,6 +57,16 @@ function App() {
           <Route
             path="/register"
             element={<RegisterPage />}
+          />
+
+          <Route
+            path="/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
+
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage />}
           />
 
 
@@ -212,9 +225,9 @@ function App() {
             />
 
             <Route
-              path="/restaurant/:restaurantId/details"
+              path="/restaurant/details"
               element={
-                <RestaurantDetailsPage />
+                <RestaurantProfilePage />
               }
             />
 

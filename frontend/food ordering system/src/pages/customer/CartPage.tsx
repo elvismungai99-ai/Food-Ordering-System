@@ -219,6 +219,8 @@ function CartPage() {
                         src={item.imageUrl}
                         alt={item.name}
                         className="h-32 w-full rounded-2xl object-cover sm:w-36"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <div className="flex h-32 w-full items-center justify-center rounded-2xl bg-slate-100 text-slate-400 sm:w-36">

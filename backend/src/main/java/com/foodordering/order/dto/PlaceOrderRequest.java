@@ -1,11 +1,18 @@
 package com.foodordering.order.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class PlaceOrderRequest {
 
+    @NotBlank(
+            message = "Delivery address is required"
+    )
+    @Size(
+            max = 500,
+            message = "Delivery address must not exceed 500 characters"
+    )
     private String deliveryAddress;
-
-    public PlaceOrderRequest() {
-    }
 
     public String getDeliveryAddress() {
         return deliveryAddress;

@@ -1,4 +1,7 @@
 import api from "../api/axios";
+import {
+  requestData,
+} from "./request";
 
 export type OrderStatus =
   | "PENDING"
@@ -58,13 +61,13 @@ export interface PlaceOrderRequest {
 export async function placeOrder(
   request: PlaceOrderRequest
 ): Promise<Order> {
-  const response =
-    await api.post<Order>(
+  return requestData(
+    () => api.post<Order>(
       "/orders",
       request
-    );
-
-  return response.data;
+    ),
+    "Unable to place your order."
+  );
 }
 
 /*
@@ -77,12 +80,12 @@ export async function placeOrder(
  */
 export async function getCustomerOrders():
 Promise<Order[]> {
-  const response =
-    await api.get<Order[]>(
+  return requestData(
+    () => api.get<Order[]>(
       "/orders"
-    );
-
-  return response.data;
+    ),
+    "Unable to load your orders."
+  );
 }
 
 /*
@@ -96,12 +99,12 @@ Promise<Order[]> {
 export async function getCustomerOrder(
   orderId: string
 ): Promise<Order> {
-  const response =
-    await api.get<Order>(
+  return requestData(
+    () => api.get<Order>(
       `/orders/${orderId}`
-    );
-
-  return response.data;
+    ),
+    "Unable to load this order."
+  );
 }
 
 /*
@@ -115,12 +118,12 @@ export async function getCustomerOrder(
 export async function getRestaurantOrders(
   restaurantId: string
 ): Promise<Order[]> {
-  const response =
-    await api.get<Order[]>(
+  return requestData(
+    () => api.get<Order[]>(
       `/orders/restaurant/${restaurantId}`
-    );
-
-  return response.data;
+    ),
+    "Unable to load restaurant orders."
+  );
 }
 
 /*
@@ -135,13 +138,13 @@ export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus
 ): Promise<Order> {
-  const response =
-    await api.patch<Order>(
+  return requestData(
+    () => api.patch<Order>(
       `/orders/${orderId}/status`,
       {
         status,
       }
-    );
-
-  return response.data;
+    ),
+    "Unable to update the order status."
+  );
 }

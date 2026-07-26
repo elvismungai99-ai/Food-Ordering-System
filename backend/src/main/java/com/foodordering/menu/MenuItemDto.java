@@ -3,36 +3,103 @@ package com.foodordering.menu;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 public class MenuItemDto {
 
     private UUID id;
+
     private UUID restaurantId;
+
+    @NotBlank(
+            message = "Menu item name is required"
+    )
+    @Size(
+            max = 120,
+            message = "Menu item name must not exceed 120 characters"
+    )
     private String name;
+
+    @Size(
+            max = 1000,
+            message = "Description must not exceed 1000 characters"
+    )
     private String description;
+
+    @NotNull(
+            message = "Menu item price is required"
+    )
+    @DecimalMin(
+            value = "0.00",
+            inclusive = true,
+            message = "Menu item price cannot be negative"
+    )
     private BigDecimal price;
+
+    @Size(
+            max = 100,
+            message = "Category must not exceed 100 characters"
+    )
     private String category;
-    private Boolean available;
+
+    private boolean available;
+
+    @Size(
+            max = 2000,
+            message = "Image URL must not exceed 2000 characters"
+    )
+    @Pattern(
+            regexp = "^$|^https?://.+",
+            message = "Image URL must begin with http:// or https://"
+    )
     private String imageUrl;
 
     public MenuItemDto() {
     }
 
-    public MenuItemDto(MenuItem menuItem) {
-        this.id = menuItem.getId();
-        this.restaurantId = menuItem.getRestaurantId();
-        this.name = menuItem.getName();
-        this.description = menuItem.getDescription();
-        this.price = menuItem.getPrice();
-        this.category = menuItem.getCategory();
-        this.available = menuItem.isAvailable();
-        this.imageUrl = menuItem.getImageUrl();
+    /*
+     * Converts a MenuItem entity into the DTO
+     * returned to React.
+     */
+    public MenuItemDto(
+            MenuItem menuItem
+    ) {
+        this.id =
+                menuItem.getId();
+
+        this.restaurantId =
+                menuItem.getRestaurantId();
+
+        this.name =
+                menuItem.getName();
+
+        this.description =
+                menuItem.getDescription();
+
+        this.price =
+                menuItem.getPrice();
+
+        this.category =
+                menuItem.getCategory();
+
+        this.available =
+                menuItem.isAvailable();
+
+        this.imageUrl =
+                menuItem.getImageUrl();
     }
 
     public UUID getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(
+            UUID id
+    ) {
         this.id = id;
     }
 
@@ -40,15 +107,20 @@ public class MenuItemDto {
         return restaurantId;
     }
 
-    public void setRestaurantId(UUID restaurantId) {
-        this.restaurantId = restaurantId;
+    public void setRestaurantId(
+            UUID restaurantId
+    ) {
+        this.restaurantId =
+                restaurantId;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(
+            String name
+    ) {
         this.name = name;
     }
 
@@ -56,15 +128,20 @@ public class MenuItemDto {
         return description;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setDescription(
+            String description
+    ) {
+        this.description =
+                description;
     }
 
     public BigDecimal getPrice() {
         return price;
     }
 
-    public void setPrice(BigDecimal price) {
+    public void setPrice(
+            BigDecimal price
+    ) {
         this.price = price;
     }
 
@@ -72,27 +149,41 @@ public class MenuItemDto {
         return category;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public Boolean getAvailable() {
-        return available;
+    public void setCategory(
+            String category
+    ) {
+        this.category =
+                category;
     }
 
     public boolean isAvailable() {
-        return Boolean.TRUE.equals(available);
+        return available;
     }
 
-    public void setAvailable(Boolean available) {
-        this.available = available;
+    /*
+     * Compatibility getter because some older
+     * parts of the project previously used
+     * getAvailable().
+     */
+    public boolean getAvailable() {
+        return available;
+    }
+
+    public void setAvailable(
+            boolean available
+    ) {
+        this.available =
+                available;
     }
 
     public String getImageUrl() {
         return imageUrl;
     }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public void setImageUrl(
+            String imageUrl
+    ) {
+        this.imageUrl =
+                imageUrl;
     }
 }

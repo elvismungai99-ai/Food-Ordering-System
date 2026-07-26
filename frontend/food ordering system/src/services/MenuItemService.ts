@@ -1,13 +1,19 @@
 import api from "../api/axios";
+import {
+  requestData,
+  requestVoid,
+} from "./request";
 
 export interface MenuItem {
   id: string;
   restaurantId: string;
+
   name: string;
   description: string;
   price: number;
   category: string;
   available: boolean;
+
   imageUrl?: string | null;
 }
 
@@ -17,79 +23,87 @@ export interface MenuItemRequest {
   price: number;
   category?: string;
   available: boolean;
+
+  /*
+   * Value entered by the restaurant admin.
+   */
   imageUrl?: string | null;
 }
 
 /*
  * Customer:
- * Get menu items for a specific restaurant.
+ * Get the menu belonging to a restaurant.
  */
-export const getMenuByRestaurant = async (
+export async function getMenuByRestaurant(
   restaurantId: string
-): Promise<MenuItem[]> => {
-  const response = await api.get<MenuItem[]>(
-    `/menu-items/restaurant/${restaurantId}`
+): Promise<MenuItem[]> {
+  return requestData(
+    () => api.get<MenuItem[]>(
+      `/menu-items/restaurant/${restaurantId}`
+    ),
+    "Unable to load the menu."
   );
-
-  return response.data;
-};
+}
 
 /*
  * Restaurant owner:
- * Get their restaurant menu.
- *
- * This currently uses the same backend endpoint
- * when a restaurantId is supplied.
+ * Load their restaurant menu.
  */
-export const getRestaurantMenu = async (
+export async function getRestaurantMenu(
   restaurantId: string
-): Promise<MenuItem[]> => {
-  const response = await api.get<MenuItem[]>(
-    `/menu-items/restaurant/${restaurantId}`
+): Promise<MenuItem[]> {
+  return requestData(
+    () => api.get<MenuItem[]>(
+      `/menu-items/restaurant/${restaurantId}`
+    ),
+    "Unable to load your menu."
   );
-
-  return response.data;
-};
+}
 
 /*
  * Restaurant owner:
- * Create a menu item.
+ * Create a new menu item.
  */
-export const createMenuItem = async (
-  menuItem: MenuItemRequest
-): Promise<MenuItem> => {
-  const response = await api.post<MenuItem>(
-    "/menu-items",
-    menuItem
+export async function createMenuItem(
+  request: MenuItemRequest
+): Promise<MenuItem> {
+  return requestData(
+    () => api.post<MenuItem>(
+      "/menu-items",
+      request
+    ),
+    "Unable to create the menu item."
   );
-
-  return response.data;
-};
+}
 
 /*
  * Restaurant owner:
- * Update a menu item.
+ * Edit an existing menu item.
  */
-export const updateMenuItem = async (
+export async function updateMenuItem(
   menuItemId: string,
-  menuItem: Partial<MenuItemRequest>
-): Promise<MenuItem> => {
-  const response = await api.put<MenuItem>(
-    `/menu-items/${menuItemId}`,
-    menuItem
+  request: MenuItemRequest
+): Promise<MenuItem> {
+  return requestData(
+    () => api.put<MenuItem>(
+      `/menu-items/${menuItemId}`,
+      request
+    ),
+    "Unable to update the menu item."
   );
-
-  return response.data;
-};
+}
 
 /*
  * Restaurant owner:
- * Delete a menu item.
+ * Delete an existing menu item.
  */
-export const deleteMenuItem = async (
+export async function deleteMenuItem(
   menuItemId: string
-): Promise<void> => {
-  await api.delete(
-    `/menu-items/${menuItemId}`
+): Promise<void> {
+  await requestVoid(
+    () => api.delete(
+      `/menu-items/${menuItemId}`
+    ),
+    "Unable to delete the menu item."
   );
-};
+}

@@ -1,4 +1,7 @@
 import api from "../api/axios";
+import {
+  requestData,
+} from "./request";
 
 interface LoginData {
   email: string;
@@ -6,9 +9,9 @@ interface LoginData {
 }
 
 interface RegisterData {
-  firstName: string;
-  lastName: string;
+  fullName: string;
   email: string;
+  phoneNumber: string;
   password: string;
   role: string;
 }
@@ -20,13 +23,28 @@ interface AuthResponse {
   firstName: string;
 }
 
-export const register = async (userData: RegisterData): Promise<void> => {
-  await api.post("/auth/register", userData);
+interface PasswordResetResponse {
+  message: string;
+}
+
+export const register = async (userData: RegisterData): Promise<AuthResponse> => {
+  return requestData(
+    () => api.post<AuthResponse>("/auth/register", userData),
+    "Unable to register your account."
+  );
 };
 
 export const login = async (credentials: LoginData): Promise<AuthResponse> => {
-  const response = await api.post<AuthResponse>("/auth/login", credentials);
-  const data = response.data;
+  localStorage.removeItem("token");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("role");
+  localStorage.removeItem("firstName");
+  localStorage.removeItem("restaurantId");
+
+  const data = await requestData(
+    () => api.post<AuthResponse>("/auth/login", credentials),
+    "Unable to log in."
+  );
 
   localStorage.setItem("token", data.token);
   localStorage.setItem("userId", data.userId);
@@ -34,6 +52,36 @@ export const login = async (credentials: LoginData): Promise<AuthResponse> => {
   localStorage.setItem("firstName", data.firstName);
 
   return data;
+};
+
+export const requestPasswordReset = async (
+  email: string
+): Promise<PasswordResetResponse> => {
+  return requestData(
+    () => api.post<PasswordResetResponse>(
+      "/auth/forgot-password",
+      {
+        email,
+      }
+    ),
+    "Unable to request a password reset."
+  );
+};
+
+export const resetPassword = async (
+  token: string,
+  password: string
+): Promise<PasswordResetResponse> => {
+  return requestData(
+    () => api.post<PasswordResetResponse>(
+      "/auth/reset-password",
+      {
+        token,
+        password,
+      }
+    ),
+    "Unable to reset your password."
+  );
 };
 
 export const logout = (): void => {

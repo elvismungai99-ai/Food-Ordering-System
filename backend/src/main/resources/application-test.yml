@@ -3,16 +3,15 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/Food_Ordering_db
-    username: food_user
-    password: foodie123
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:food_ordering_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: create-drop
+    show-sql: false
 
   flyway:
     enabled: false

@@ -1,6 +1,9 @@
 spring:
   application:
     name: backend
+  devtools:
+    restart:
+      enabled: false
   datasource:
     url: jdbc:postgresql://localhost:5432/Food_Ordering_db
     username: food_user
@@ -19,3 +22,12 @@ server:
 
 jwt:
   secret: f00d0rd3r1ng$yst3mS3cr3tK3y2026!!SecureKey32Chars
+
+app:
+  frontend-base-url: http://localhost:5173
+  mail:
+    from: no-reply@foodordering.local
+
+security:
+  rate-limit:
+    ignore-localhost: false

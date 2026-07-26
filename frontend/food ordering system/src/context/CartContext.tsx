@@ -16,6 +16,9 @@ import {
   updateCartItemQuantity,
   type Cart,
 } from "../services/CartService";
+import {
+  getApiErrorMessage,
+} from "../utils/apiError";
 
 interface CartContextValue {
   cart: Cart | null;
@@ -81,9 +84,17 @@ export function CartProvider({
       const role =
         localStorage.getItem("role");
 
+      const normalizedRole =
+        role
+          ?.replace(
+            /^ROLE_/,
+            ""
+          )
+          .toUpperCase();
+
       if (
         !token
-        || role !== "CUSTOMER"
+        || normalizedRole !== "CUSTOMER"
       ) {
         clearCartState();
         return;
@@ -104,7 +115,9 @@ export function CartProvider({
         );
 
         setError(
-          "Unable to load your cart."
+          getApiErrorMessage(
+            requestError
+          )
         );
       } finally {
         setLoading(false);
@@ -118,6 +131,7 @@ export function CartProvider({
         quantity = 1
       ) => {
         try {
+          setLoading(true);
           setError("");
 
           const updatedCart =
@@ -129,10 +143,14 @@ export function CartProvider({
           setCart(updatedCart);
         } catch (requestError) {
           setError(
-            "Unable to add this item to your cart."
+            getApiErrorMessage(
+              requestError
+            )
           );
 
           throw requestError;
+        } finally {
+          setLoading(false);
         }
       },
       []
@@ -145,6 +163,7 @@ export function CartProvider({
         quantity: number
       ) => {
         try {
+          setLoading(true);
           setError("");
 
           const updatedCart =
@@ -156,10 +175,14 @@ export function CartProvider({
           setCart(updatedCart);
         } catch (requestError) {
           setError(
-            "Unable to update the item quantity."
+            getApiErrorMessage(
+              requestError
+            )
           );
 
           throw requestError;
+        } finally {
+          setLoading(false);
         }
       },
       []
@@ -169,6 +192,7 @@ export function CartProvider({
     useCallback(
       async (cartItemId: string) => {
         try {
+          setLoading(true);
           setError("");
 
           const updatedCart =
@@ -179,10 +203,14 @@ export function CartProvider({
           setCart(updatedCart);
         } catch (requestError) {
           setError(
-            "Unable to remove the cart item."
+            getApiErrorMessage(
+              requestError
+            )
           );
 
           throw requestError;
+        } finally {
+          setLoading(false);
         }
       },
       []
@@ -200,7 +228,9 @@ export function CartProvider({
         setCart(updatedCart);
       } catch (requestError) {
         setError(
-          "Unable to accept the updated prices."
+          getApiErrorMessage(
+            requestError
+          )
         );
 
         throw requestError;

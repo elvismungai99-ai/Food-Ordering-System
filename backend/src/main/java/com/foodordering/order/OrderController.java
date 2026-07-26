@@ -1,6 +1,7 @@
 package com.foodordering.order;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -17,7 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.foodordering.order.dto.OrderDto;
 import com.foodordering.order.dto.PlaceOrderRequest;
 import com.foodordering.order.dto.UpdateOrderStatusRequest;
+import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.security.JwtUtil;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -37,144 +41,70 @@ public class OrderController {
                 jwtUtil;
     }
 
-    // =========================================================
-    // PLACE ORDER
-    // =========================================================
-
-    /*
-     * Customer places an order from their current cart.
-     *
-     * POST /api/orders
-     */
     @PostMapping
-    public ResponseEntity<?> placeOrder(
+    public ResponseEntity<OrderDto>
+    placeOrder(
+
             @RequestHeader("Authorization")
             String authHeader,
 
+            @Valid
             @RequestBody
             PlaceOrderRequest request
     ) {
 
-        try {
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            UUID customerId =
-                    extractUserId(
-                            authHeader
-                    );
+        requireCustomer(
+                authHeader
+        );
 
-            OrderDto order =
-                    orderService.placeOrder(
-                            customerId,
-                            request
-                    );
+        OrderDto order =
+                orderService
+                        .placeOrder(
+                                customerId,
+                                request
+                        );
 
-            return ResponseEntity
-                    .status(
-                            HttpStatus.CREATED
-                    )
-                    .body(order);
-
-        } catch (
-                RuntimeException exception
-        ) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-        }
+        return ResponseEntity
+                .status(
+                        HttpStatus.CREATED
+                )
+                .body(order);
     }
 
-    // =========================================================
-    // GET CUSTOMER ORDERS
-    // =========================================================
-
-    /*
-     * GET /api/orders
-     */
     @GetMapping
-    public ResponseEntity<?> getCustomerOrders(
+    public ResponseEntity<List<OrderDto>>
+    getCustomerOrders(
+
             @RequestHeader("Authorization")
             String authHeader
     ) {
 
-        try {
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            UUID customerId =
-                    extractUserId(
-                            authHeader
-                    );
+        requireCustomer(
+                authHeader
+        );
 
-            List<OrderDto> orders =
-                    orderService
-                            .getCustomerOrders(
-                                    customerId
-                            );
-
-            return ResponseEntity
-                    .ok(orders);
-
-        } catch (
-                RuntimeException exception
-        ) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-        }
+        return ResponseEntity.ok(
+                orderService
+                        .getCustomerOrders(
+                                customerId
+                        )
+        );
     }
 
-    // =========================================================
-    // GET RESTAURANT ORDERS
-    // =========================================================
-
-    /*
-     * Restaurant admin uses this endpoint to load
-     * orders belonging to their restaurant.
-     *
-     * GET /api/orders/restaurant/{restaurantId}
-     */
-    @GetMapping("/restaurant/{restaurantId}")
-    public ResponseEntity<?> getRestaurantOrders(
-            @PathVariable
-            UUID restaurantId
-    ) {
-
-        try {
-
-            List<OrderDto> orders =
-                    orderService
-                            .getRestaurantOrders(
-                                    restaurantId
-                            );
-
-            return ResponseEntity
-                    .ok(orders);
-
-        } catch (
-                RuntimeException exception
-        ) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-        }
-    }
-
-    // =========================================================
-    // GET SINGLE CUSTOMER ORDER
-    // =========================================================
-
-    /*
-     * GET /api/orders/{orderId}
-     */
     @GetMapping("/{orderId}")
-    public ResponseEntity<?> getCustomerOrder(
+    public ResponseEntity<OrderDto>
+    getCustomerOrder(
+
             @RequestHeader("Authorization")
             String authHeader,
 
@@ -182,135 +112,82 @@ public class OrderController {
             UUID orderId
     ) {
 
-        try {
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            UUID customerId =
-                    extractUserId(
-                            authHeader
-                    );
+        requireCustomer(
+                authHeader
+        );
 
-            OrderDto order =
-                    orderService
-                            .getCustomerOrder(
-                                    customerId,
-                                    orderId
-                            );
-
-            return ResponseEntity
-                    .ok(order);
-
-        } catch (
-                RuntimeException exception
-        ) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-        }
+        return ResponseEntity.ok(
+                orderService
+                        .getCustomerOrder(
+                                customerId,
+                                orderId
+                        )
+        );
     }
 
-    // =========================================================
-    // UPDATE ORDER STATUS
-    // =========================================================
+    @GetMapping(
+            "/restaurant/{restaurantId}"
+    )
+    public ResponseEntity<List<OrderDto>>
+    getRestaurantOrders(
 
-    /*
-     * Restaurant admin uses this endpoint to move an order
-     * through the state machine.
-     *
-     * PATCH /api/orders/{orderId}/status
-     *
-     * Body:
-     *
-     * {
-     *     "status": "CONFIRMED"
-     * }
-     */
-    @PatchMapping("/{orderId}/status")
-    public ResponseEntity<?> updateOrderStatus(
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @PathVariable
+            UUID restaurantId
+    ) {
+
+        requireRestaurantOwner(
+                authHeader
+        );
+
+        return ResponseEntity.ok(
+                orderService
+                        .getRestaurantOrders(
+                                restaurantId
+                        )
+        );
+    }
+
+    @PatchMapping(
+            "/{orderId}/status"
+    )
+    public ResponseEntity<OrderDto>
+    updateOrderStatus(
+
+            @RequestHeader("Authorization")
+            String authHeader,
+
             @PathVariable
             UUID orderId,
 
+            @Valid
             @RequestBody
             UpdateOrderStatusRequest request
     ) {
 
-        try {
+        requireRestaurantOwner(
+                authHeader
+        );
 
-            if (
-                    request == null
-                    || request.getStatus() == null
-            ) {
-
-                return ResponseEntity
-                        .badRequest()
-                        .body(
-                                "Order status is required"
-                        );
-            }
-
-            OrderDto updatedOrder =
-                    orderService
-                            .updateOrderStatus(
-                                    orderId,
-                                    request.getStatus()
-                            );
-
-            return ResponseEntity
-                    .ok(
-                            updatedOrder
-                    );
-
-        } catch (
-                IllegalStateException exception
-        ) {
-
-            /*
-             * Example:
-             *
-             * PENDING -> DELIVERED
-             *
-             * will be rejected here.
-             */
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-
-        } catch (
-                RuntimeException exception
-        ) {
-
-            return ResponseEntity
-                    .badRequest()
-                    .body(
-                            exception.getMessage()
-                    );
-        }
+        return ResponseEntity.ok(
+                orderService
+                        .updateOrderStatus(
+                                orderId,
+                                request.getStatus()
+                        )
+        );
     }
-
-    // =========================================================
-    // EXTRACT USER ID FROM JWT
-    // =========================================================
 
     private UUID extractUserId(
             String authHeader
     ) {
-
-        if (
-                authHeader == null
-                || !authHeader
-                        .startsWith(
-                                "Bearer "
-                        )
-        ) {
-
-            throw new RuntimeException(
-                    "Authorization token is missing or invalid"
-            );
-        }
 
         String token =
                 authHeader.substring(7);
@@ -318,4 +195,72 @@ public class OrderController {
         return jwtUtil
                 .extractUserId(token);
     }
-}
+
+    private void requireCustomer(
+            String authHeader
+    ) {
+
+        String role =
+                extractRole(
+                        authHeader
+                );
+
+        if (!"CUSTOMER".equals(role)) {
+            throw new ForbiddenOperationException(
+                    "Only customers can access customer orders"
+            );
+        }
+    }
+
+    private void requireRestaurantOwner(
+            String authHeader
+    ) {
+
+        String role =
+                extractRole(
+                        authHeader
+                );
+
+        if (
+                !"OWNER".equals(role)
+                && !"RESTAURANT_ADMIN".equals(role)
+                && !"RESTAURANT_OWNER".equals(role)
+                && !"SUPER_ADMIN".equals(role)
+        ) {
+            throw new ForbiddenOperationException(
+                    "Only restaurant owners can access restaurant orders"
+            );
+        }
+    }
+
+    private String extractRole(
+            String authHeader
+    ) {
+
+        String token =
+                authHeader.substring(7);
+
+        return normalizeRole(
+                jwtUtil.extractRole(token)
+        );
+    }
+
+    private String normalizeRole(
+            String role
+    ) {
+
+        if (role == null || role.isBlank()) {
+            return "";
+        }
+
+        String normalized =
+                role.trim().toUpperCase(Locale.ROOT);
+
+        if (normalized.startsWith("ROLE_")) {
+            normalized =
+                    normalized.substring(5);
+        }
+
+        return normalized;
+    }
+} 

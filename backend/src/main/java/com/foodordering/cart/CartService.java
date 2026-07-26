@@ -1,198 +1,263 @@
 package com.foodordering.cart;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import com.foodordering.cart.dto.CartDto;
+import com.foodordering.common.exception.BusinessRuleException;
+import com.foodordering.common.exception.ForbiddenOperationException;
+import com.foodordering.common.exception.ResourceNotFoundException;
+
+import com.foodordering.menu.MenuItem;
+import com.foodordering.menu.MenuItemRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.foodordering.cart.dto.AddCartItemRequest;
-import com.foodordering.cart.dto.CartDto;
-import com.foodordering.cart.dto.CartItemDto;
-import com.foodordering.cart.dto.UpdateCartItemRequest;
-import com.foodordering.menu.MenuItem;
-import com.foodordering.menu.MenuItemRepository;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class CartService {
 
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
     private final MenuItemRepository menuItemRepository;
 
     public CartService(
             CartRepository cartRepository,
-            CartItemRepository cartItemRepository,
             MenuItemRepository menuItemRepository
     ) {
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
-        this.menuItemRepository = menuItemRepository;
+        this.cartRepository =
+                cartRepository;
+
+        this.menuItemRepository =
+                menuItemRepository;
     }
 
-    /*
-     * Viewing the cart automatically checks whether
-     * any restaurant menu prices have changed.
-     *
-     * It does not overwrite the stored cart price.
-     */
-    @Transactional(readOnly = true)
-    public CartDto getCart(UUID customerId) {
-        Cart cart = getOrCreateCart(customerId);
-
-        return convertToDto(cart);
-    }
-
-    public CartDto addItem(
-            UUID customerId,
-            AddCartItemRequest request
+    @Transactional
+    public CartDto getCart(
+            UUID customerId
     ) {
-        validateAddItemRequest(request);
 
-        Cart cart = getOrCreateCart(customerId);
-
-        MenuItem menuItem = menuItemRepository
-                .findById(request.getMenuItemId())
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Menu item not found"
-                        )
+        Cart cart =
+                getOrCreateCart(
+                        customerId
                 );
 
+        return toCartDto(cart);
+    }
+
+    @Transactional
+    public CartDto addItem(
+            UUID customerId,
+            UUID menuItemId,
+            Integer quantity
+    ) {
+
+        MenuItem menuItem =
+                menuItemRepository
+                        .findById(menuItemId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Menu item not found"
+                                )
+                        );
+
         if (!menuItem.isAvailable()) {
-            throw new RuntimeException(
-                    "This menu item is currently unavailable"
+            throw new BusinessRuleException(
+                    menuItem.getName()
+                    + " is currently unavailable"
             );
         }
 
-        CartItem existingItem = cartItemRepository
-                .findByCartIdAndMenuItemId(
-                        cart.getId(),
-                        menuItem.getId()
-                )
-                .orElse(null);
+        Cart cart =
+                getOrCreateCart(
+                        customerId
+                );
 
-        if (existingItem != null) {
-            int newQuantity =
-                    existingItem.getQuantity()
-                    + request.getQuantity();
+        /*
+         * Prevent mixing restaurants in one cart.
+         */
+        for (CartItem existing : cart.getItems()) {
 
-            existingItem.setQuantity(newQuantity);
+            MenuItem existingMenuItem =
+                    menuItemRepository
+                            .findById(
+                                    existing.getMenuItemId()
+                            )
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException(
+                                            "A menu item in your cart no longer exists"
+                                    )
+                            );
 
-            /*
-             * Do not silently overwrite an older cart price.
-             * The difference must remain visible to the customer.
-             */
-            cartItemRepository.save(existingItem);
+            if (
+                    !existingMenuItem
+                            .getRestaurantId()
+                            .equals(
+                                    menuItem
+                                            .getRestaurantId()
+                            )
+            ) {
 
-        } else {
-            CartItem newItem = new CartItem();
-
-            newItem.setCart(cart);
-            newItem.setMenuItemId(menuItem.getId());
-            newItem.setQuantity(request.getQuantity());
-
-            /*
-             * Store a snapshot of the price when first added.
-             */
-            newItem.setUnitPrice(menuItem.getPrice());
-
-            cart.addItem(newItem);
-            cartRepository.save(cart);
+                throw new BusinessRuleException(
+                        "Your cart can contain items from only one restaurant at a time"
+                );
+            }
         }
 
-        return getRefreshedCart(customerId);
+        /*
+         * Same item → increase quantity instead
+         * of creating duplicate rows.
+         */
+        CartItem existingItem =
+                cart.getItems()
+                        .stream()
+                        .filter(item ->
+                                item
+                                        .getMenuItemId()
+                                        .equals(
+                                                menuItemId
+                                        )
+                        )
+                        .findFirst()
+                        .orElse(null);
+
+        if (existingItem != null) {
+
+            int newQuantity =
+                    existingItem
+                            .getQuantity()
+                    + quantity;
+
+            if (newQuantity > 99) {
+                throw new BusinessRuleException(
+                        "Quantity cannot exceed 99"
+                );
+            }
+
+            existingItem.setQuantity(
+                    newQuantity
+            );
+
+        } else {
+
+            CartItem item =
+                    new CartItem();
+
+            item.setMenuItemId(
+                    menuItem.getId()
+            );
+
+            item.setQuantity(
+                    quantity
+            );
+
+            item.setUnitPrice(
+                    menuItem.getPrice()
+            );
+
+            cart.addItem(item);
+        }
+
+        Cart saved =
+                cartRepository.save(cart);
+
+        return toCartDto(saved);
     }
 
+    @Transactional
     public CartDto updateQuantity(
             UUID customerId,
             UUID cartItemId,
-            UpdateCartItemRequest request
+            Integer quantity
     ) {
-        if (
-                request == null
-                || request.getQuantity() == null
-        ) {
-            throw new RuntimeException(
-                    "Quantity is required"
-            );
-        }
 
-        Cart cart = getExistingCart(customerId);
-
-        CartItem cartItem = cartItemRepository
-                .findByIdAndCartId(
-                        cartItemId,
-                        cart.getId()
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart item not found"
-                        )
+        Cart cart =
+                getOrCreateCart(
+                        customerId
                 );
 
-        if (request.getQuantity() <= 0) {
-            cart.removeItem(cartItem);
-            cartItemRepository.delete(cartItem);
-        } else {
-            cartItem.setQuantity(
-                    request.getQuantity()
-            );
+        CartItem cartItem =
+                findOwnedCartItem(
+                        cart,
+                        cartItemId
+                );
 
-            cartItemRepository.save(cartItem);
-        }
+        cartItem.setQuantity(
+                quantity
+        );
 
-        return getRefreshedCart(customerId);
+        return toCartDto(
+                cartRepository.save(
+                        cart
+                )
+        );
     }
 
+    @Transactional
     public CartDto removeItem(
             UUID customerId,
             UUID cartItemId
     ) {
-        Cart cart = getExistingCart(customerId);
 
-        CartItem cartItem = cartItemRepository
-                .findByIdAndCartId(
-                        cartItemId,
-                        cart.getId()
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart item not found"
-                        )
+        Cart cart =
+                getOrCreateCart(
+                        customerId
                 );
 
-        cart.removeItem(cartItem);
-        cartItemRepository.delete(cartItem);
+        CartItem item =
+                findOwnedCartItem(
+                        cart,
+                        cartItemId
+                );
 
-        return getRefreshedCart(customerId);
+        cart.getItems()
+                .remove(item);
+
+        return toCartDto(
+                cartRepository.save(
+                        cart
+                )
+        );
     }
 
-    /*
-     * Called after the customer has reviewed and
-     * accepted all changed prices.
-     */
-    public CartDto acceptCurrentPrices(
+    @Transactional
+    public CartDto acceptPriceChanges(
             UUID customerId
     ) {
-        Cart cart = getExistingCart(customerId);
 
-        for (CartItem cartItem : cart.getItems()) {
-            MenuItem menuItem = menuItemRepository
-                    .findById(
-                            cartItem.getMenuItemId()
-                    )
-                    .orElseThrow(() ->
-                            new RuntimeException(
-                                    "A menu item in your cart no longer exists"
+        Cart cart =
+                getOrCreateCart(
+                        customerId
+                );
+
+        if (cart.getItems().isEmpty()) {
+            throw new BusinessRuleException(
+                    "Your cart is empty"
+            );
+        }
+
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
+
+            MenuItem menuItem =
+                    menuItemRepository
+                            .findById(
+                                    cartItem
+                                            .getMenuItemId()
                             )
-                    );
+                            .orElseThrow(() ->
+                                    new ResourceNotFoundException(
+                                            "A menu item in your cart no longer exists"
+                                    )
+                            );
 
             if (!menuItem.isAvailable()) {
-                throw new RuntimeException(
+                throw new BusinessRuleException(
                         menuItem.getName()
                         + " is no longer available"
                 );
@@ -203,93 +268,44 @@ public class CartService {
             );
         }
 
-        cartRepository.save(cart);
-
-        return getRefreshedCart(customerId);
-    }
-
-    private Cart getOrCreateCart(
-            UUID customerId
-    ) {
-        return cartRepository
-                .findWithItemsByCustomerId(
-                        customerId
+        return toCartDto(
+                cartRepository.save(
+                        cart
                 )
-                .orElseGet(() -> {
-                    Cart cart = new Cart();
-                    cart.setCustomerId(customerId);
-
-                    return cartRepository.save(cart);
-                });
+        );
     }
 
-    private Cart getExistingCart(
-            UUID customerId
+    private CartDto toCartDto(
+            Cart cart
     ) {
-        return cartRepository
-                .findWithItemsByCustomerId(
-                        customerId
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart not found for this customer"
-                        )
-                );
-    }
 
-    private CartDto getRefreshedCart(
-            UUID customerId
-    ) {
-        Cart cart = cartRepository
-                .findWithItemsByCustomerId(
-                        customerId
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart not found"
-                        )
-                );
+        List<UUID> menuItemIds =
+                cart.getItems()
+                        .stream()
+                        .map(CartItem::getMenuItemId)
+                        .toList();
 
-        return convertToDto(cart);
-    }
+        Map<UUID, MenuItem> menuItemsById =
+                menuItemRepository
+                        .findAllById(menuItemIds)
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        MenuItem::getId,
+                                        Function.identity()
+                                )
+                        );
 
-    private void validateAddItemRequest(
-            AddCartItemRequest request
-    ) {
-        if (request == null) {
-            throw new RuntimeException(
-                    "Add-to-cart request is required"
-            );
-        }
+        CartDto cartDto =
+                new CartDto();
 
-        if (request.getMenuItemId() == null) {
-            throw new RuntimeException(
-                    "Menu item ID is required"
-            );
-        }
-
-        if (
-                request.getQuantity() == null
-                || request.getQuantity() <= 0
-        ) {
-            throw new RuntimeException(
-                    "Quantity must be greater than zero"
-            );
-        }
-    }
-
-    private CartDto convertToDto(Cart cart) {
-        CartDto dto = new CartDto();
-
-        dto.setId(cart.getId());
-        dto.setCustomerId(
-                cart.getCustomerId()
+        cartDto.setId(
+                cart.getId()
         );
 
-        List<CartItemDto> itemDtos =
-                new ArrayList<>();
-
-        int totalItems = 0;
+        cartDto.setCustomerId(
+                cart.getCustomerId()
+        );
 
         BigDecimal previousTotal =
                 BigDecimal.ZERO;
@@ -297,60 +313,136 @@ public class CartService {
         BigDecimal currentTotal =
                 BigDecimal.ZERO;
 
-        boolean hasPriceChanges = false;
-        boolean hasUnavailableItems = false;
+        int itemCount =
+                0;
 
-        for (CartItem cartItem : cart.getItems()) {
-            MenuItem menuItem = menuItemRepository
-                    .findById(
+        boolean hasPriceChanges =
+                false;
+
+        boolean hasUnavailableItems =
+                false;
+
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
+
+            MenuItem menuItem =
+                    menuItemsById.get(
                             cartItem.getMenuItemId()
-                    )
-                    .orElse(null);
+                    );
 
-            CartItemDto itemDto =
-                    new CartItemDto(
+            com.foodordering.cart.dto.CartItemDto itemDto =
+                    new com.foodordering.cart.dto.CartItemDto(
                             cartItem,
                             menuItem
                     );
 
-            itemDtos.add(itemDto);
+            cartDto
+                    .getItems()
+                    .add(itemDto);
 
-            totalItems += cartItem.getQuantity();
+            previousTotal =
+                    previousTotal.add(
+                            itemDto.getSubtotal()
+                    );
 
-            previousTotal = previousTotal.add(
-                    itemDto.getSubtotal()
-            );
+            currentTotal =
+                    currentTotal.add(
+                            itemDto.getCurrentSubtotal()
+                    );
 
-            currentTotal = currentTotal.add(
-                    itemDto.getCurrentSubtotal()
-            );
-
-            if (itemDto.isPriceChanged()) {
-                hasPriceChanges = true;
+            if (cartItem.getQuantity() != null) {
+                itemCount +=
+                        cartItem.getQuantity();
             }
 
-            if (!itemDto.isAvailable()) {
-                hasUnavailableItems = true;
-            }
+            hasPriceChanges =
+                    hasPriceChanges
+                    || itemDto.isPriceChanged();
+
+            hasUnavailableItems =
+                    hasUnavailableItems
+                    || !itemDto.isAvailable();
         }
 
-        dto.setItems(itemDtos);
-        dto.setTotalItems(totalItems);
+        cartDto.setTotalItems(
+                itemCount
+        );
 
-        dto.setPreviousTotalAmount(
+        cartDto.setPreviousTotalAmount(
                 previousTotal
         );
 
-        dto.setTotalAmount(currentTotal);
+        cartDto.setTotalAmount(
+                currentTotal
+        );
 
-        dto.setHasPriceChanges(
+        cartDto.setHasPriceChanges(
                 hasPriceChanges
         );
 
-        dto.setHasUnavailableItems(
+        cartDto.setHasUnavailableItems(
                 hasUnavailableItems
         );
 
-        return dto;
+        return cartDto;
+    }
+
+    private Cart getOrCreateCart(
+            UUID customerId
+    ) {
+
+        return cartRepository
+                .findWithItemsByCustomerId(
+                        customerId
+                )
+                .orElseGet(() -> {
+
+                    Cart cart =
+                            new Cart();
+
+                    cart.setCustomerId(
+                            customerId
+                    );
+
+                    return cartRepository
+                            .save(cart);
+                });
+    }
+
+    private CartItem findOwnedCartItem(
+            Cart cart,
+            UUID cartItemId
+    ) {
+
+        CartItem item =
+                cart.getItems()
+                        .stream()
+                        .filter(cartItem ->
+                                cartItem
+                                        .getId()
+                                        .equals(
+                                                cartItemId
+                                        )
+                        )
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Cart item not found"
+                                )
+                        );
+
+        if (
+                !cart
+                        .getItems()
+                        .contains(item)
+        ) {
+            throw new ForbiddenOperationException(
+                    "You are not allowed to modify this cart item"
+            );
+        }
+
+        return item;
     }
 }

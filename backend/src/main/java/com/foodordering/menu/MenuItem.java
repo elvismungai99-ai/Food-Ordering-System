@@ -4,11 +4,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.foodordering.restaurant.Restaurant;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -21,53 +26,59 @@ public class MenuItem {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "restaurant_id", nullable = false)
-    private UUID restaurantId;
+    /*
+     * Relationship with Restaurant.
+     * JPA stores restaurant_id automatically.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurant_id", nullable = false)
+    private Restaurant restaurant;
 
-    @Column(name = "name", nullable = false)
+    @Column(nullable = false)
     private String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(
-            name = "price",
-            nullable = false,
-            precision = 12,
-            scale = 2
-    )
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(name = "category")
+    @Column
     private String category;
 
-    @Column(name = "available", nullable = false)
-    private boolean available;
+    @Column(nullable = false)
+    private boolean available = true;
 
-    @Column(name = "image_url")
+    /*
+     * Public image URL entered by the restaurant owner.
+     */
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
-    @Column(name = "created_at")
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     public MenuItem() {
     }
 
     @PrePersist
-    protected void onCreate() {
+    public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
-
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
-    protected void onUpdate() {
+    public void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    // =====================================================
+    // ID
+    // =====================================================
 
     public UUID getId() {
         return id;
@@ -77,13 +88,38 @@ public class MenuItem {
         this.id = id;
     }
 
-    public UUID getRestaurantId() {
-        return restaurantId;
+    // =====================================================
+    // RESTAURANT
+    // =====================================================
+
+    public Restaurant getRestaurant() {
+        return restaurant;
     }
 
-    public void setRestaurantId(UUID restaurantId) {
-        this.restaurantId = restaurantId;
+    public void setRestaurant(Restaurant restaurant) {
+        this.restaurant = restaurant;
     }
+
+    /*
+     * Convenience getter.
+     * This allows existing code like:
+     *
+     * menuItem.getRestaurantId()
+     *
+     * to continue working.
+     */
+    public UUID getRestaurantId() {
+
+        if (restaurant == null) {
+            return null;
+        }
+
+        return restaurant.getId();
+    }
+
+    // =====================================================
+    // NAME
+    // =====================================================
 
     public String getName() {
         return name;
@@ -93,6 +129,10 @@ public class MenuItem {
         this.name = name;
     }
 
+    // =====================================================
+    // DESCRIPTION
+    // =====================================================
+
     public String getDescription() {
         return description;
     }
@@ -100,6 +140,10 @@ public class MenuItem {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    // =====================================================
+    // PRICE
+    // =====================================================
 
     public BigDecimal getPrice() {
         return price;
@@ -109,6 +153,10 @@ public class MenuItem {
         this.price = price;
     }
 
+    // =====================================================
+    // CATEGORY
+    // =====================================================
+
     public String getCategory() {
         return category;
     }
@@ -117,13 +165,34 @@ public class MenuItem {
         this.category = category;
     }
 
+    // =====================================================
+    // AVAILABLE
+    // =====================================================
+
     public boolean isAvailable() {
+        return available;
+    }
+
+    /*
+     * Compatibility getter.
+     * Older controller code may still call:
+     *
+     * dto.getAvailable()
+     *
+     * so having both getters prevents future
+     * compatibility issues.
+     */
+    public boolean getAvailable() {
         return available;
     }
 
     public void setAvailable(boolean available) {
         this.available = available;
     }
+
+    // =====================================================
+    // IMAGE URL
+    // =====================================================
 
     public String getImageUrl() {
         return imageUrl;
@@ -133,11 +202,27 @@ public class MenuItem {
         this.imageUrl = imageUrl;
     }
 
+    // =====================================================
+    // CREATED AT
+    // =====================================================
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    // =====================================================
+    // UPDATED AT
+    // =====================================================
+
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

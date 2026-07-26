@@ -6,6 +6,8 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
+import com.foodordering.common.exception.BusinessRuleException;
+
 @Component
 public class OrderStateMachine {
 
@@ -43,13 +45,17 @@ public class OrderStateMachine {
                     ),
 
                     OrderStatus.DELIVERED,
-                    EnumSet.noneOf(OrderStatus.class),
+                    EnumSet.noneOf(
+                            OrderStatus.class
+                    ),
 
                     OrderStatus.CANCELLED,
-                    EnumSet.noneOf(OrderStatus.class)
+                    EnumSet.noneOf(
+                            OrderStatus.class
+                    )
             );
 
-    public boolean canTransition(
+    public void validateTransition(
             OrderStatus currentStatus,
             OrderStatus newStatus
     ) {
@@ -58,33 +64,27 @@ public class OrderStateMachine {
                 currentStatus == null
                 || newStatus == null
         ) {
-            return false;
+            throw new BusinessRuleException(
+                    "Current and new order status are required"
+            );
         }
 
-        return ALLOWED_TRANSITIONS
-                .getOrDefault(
-                        currentStatus,
-                        EnumSet.noneOf(
-                                OrderStatus.class
+        boolean valid =
+                ALLOWED_TRANSITIONS
+                        .getOrDefault(
+                                currentStatus,
+                                EnumSet.noneOf(
+                                        OrderStatus.class
+                                )
                         )
-                )
-                .contains(newStatus);
-    }
+                        .contains(
+                                newStatus
+                        );
 
-    public void validateTransition(
-            OrderStatus currentStatus,
-            OrderStatus newStatus
-    ) {
+        if (!valid) {
 
-        if (
-                !canTransition(
-                        currentStatus,
-                        newStatus
-                )
-        ) {
-
-            throw new IllegalStateException(
-                    "Invalid order status transition from "
+            throw new BusinessRuleException(
+                    "Order cannot move from "
                     + currentStatus
                     + " to "
                     + newStatus

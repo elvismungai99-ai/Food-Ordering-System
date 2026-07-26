@@ -1,7 +1,6 @@
 package com.foodordering.order.dto;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,8 +25,8 @@ public class OrderDto {
 
     private List<OrderItemDto> items;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String createdAt;
+    private String updatedAt;
 
     public OrderDto() {
     }
@@ -53,8 +52,12 @@ public class OrderDto {
                 .map(OrderItemDto::new)
                 .toList();
 
-        this.createdAt = order.getCreatedAt();
-        this.updatedAt = order.getUpdatedAt();
+        this.createdAt = order.getCreatedAt() != null
+                ? order.getCreatedAt().toString()
+                : null;
+        this.updatedAt = order.getUpdatedAt() != null
+                ? order.getUpdatedAt().toString()
+                : null;
 
         this.paymentStatus = order.getPaymentStatus();
         this.paymentReference = order.getPaymentReference();
@@ -92,11 +95,11 @@ public class OrderDto {
         return items;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public String getUpdatedAt() {
         return updatedAt;
     }
 

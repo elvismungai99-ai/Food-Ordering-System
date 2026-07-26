@@ -1,22 +1,20 @@
 package com.foodordering.cart;
 
-import java.util.UUID;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.foodordering.cart.dto.AddCartItemRequest;
 import com.foodordering.cart.dto.CartDto;
 import com.foodordering.cart.dto.UpdateCartItemRequest;
 import com.foodordering.security.JwtUtil;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.web.bind.annotation.*;
+
+import com.foodordering.common.exception.ForbiddenOperationException;
+
+import java.util.Locale;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -29,156 +27,204 @@ public class CartController {
             CartService cartService,
             JwtUtil jwtUtil
     ) {
-        this.cartService = cartService;
-        this.jwtUtil = jwtUtil;
+        this.cartService =
+                cartService;
+
+        this.jwtUtil =
+                jwtUtil;
     }
 
-    /*
-     * Returns the cart and identifies all price changes.
-     */
     @GetMapping
-    public ResponseEntity<?> getCart(
+    public ResponseEntity<CartDto> getCart(
             @RequestHeader("Authorization")
             String authHeader
     ) {
-        try {
-            UUID customerId =
-                    extractUserId(authHeader);
 
-            CartDto cart =
-                    cartService.getCart(customerId);
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(cart);
+        requireCustomer(
+                authHeader
+        );
 
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                cartService.getCart(
+                        customerId
+                )
+        );
     }
 
     @PostMapping("/items")
-    public ResponseEntity<?> addItem(
+    public ResponseEntity<CartDto> addItem(
+
             @RequestHeader("Authorization")
             String authHeader,
 
+            @Valid
             @RequestBody
             AddCartItemRequest request
     ) {
-        try {
-            UUID customerId =
-                    extractUserId(authHeader);
 
-            CartDto cart =
-                    cartService.addItem(
-                            customerId,
-                            request
-                    );
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(cart);
+        requireCustomer(
+                authHeader
+        );
 
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                cartService.addItem(
+                        customerId,
+                        request.getMenuItemId(),
+                        request.getQuantity()
+                )
+        );
     }
 
-    @PatchMapping("/items/{cartItemId}")
-    public ResponseEntity<?> updateQuantity(
+    @PatchMapping(
+            "/items/{cartItemId}"
+    )
+    public ResponseEntity<CartDto>
+    updateQuantity(
+
             @RequestHeader("Authorization")
             String authHeader,
 
             @PathVariable
             UUID cartItemId,
 
+            @Valid
             @RequestBody
             UpdateCartItemRequest request
     ) {
-        try {
-            UUID customerId =
-                    extractUserId(authHeader);
 
-            CartDto cart =
-                    cartService.updateQuantity(
-                            customerId,
-                            cartItemId,
-                            request
-                    );
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(cart);
+        requireCustomer(
+                authHeader
+        );
 
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                cartService.updateQuantity(
+                        customerId,
+                        cartItemId,
+                        request.getQuantity()
+                )
+        );
     }
 
-    @DeleteMapping("/items/{cartItemId}")
-    public ResponseEntity<?> removeItem(
+    @DeleteMapping(
+            "/items/{cartItemId}"
+    )
+    public ResponseEntity<CartDto>
+    removeItem(
+
             @RequestHeader("Authorization")
             String authHeader,
 
             @PathVariable
             UUID cartItemId
     ) {
-        try {
-            UUID customerId =
-                    extractUserId(authHeader);
 
-            CartDto cart =
-                    cartService.removeItem(
-                            customerId,
-                            cartItemId
-                    );
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(cart);
+        requireCustomer(
+                authHeader
+        );
 
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                cartService.removeItem(
+                        customerId,
+                        cartItemId
+                )
+        );
     }
 
-    /*
-     * Customer confirms that they accept all
-     * current restaurant prices.
-     */
-    @PostMapping("/accept-price-changes")
-    public ResponseEntity<?> acceptPriceChanges(
+    @PostMapping(
+            "/accept-price-changes"
+    )
+    public ResponseEntity<CartDto>
+    acceptPriceChanges(
+
             @RequestHeader("Authorization")
             String authHeader
     ) {
-        try {
-            UUID customerId =
-                    extractUserId(authHeader);
 
-            CartDto cart =
-                    cartService.acceptCurrentPrices(
-                            customerId
-                    );
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(cart);
+        requireCustomer(
+                authHeader
+        );
 
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                cartService
+                        .acceptPriceChanges(
+                                customerId
+                        )
+        );
     }
 
     private UUID extractUserId(
             String authHeader
     ) {
-        if (
-                authHeader == null
-                || !authHeader.startsWith("Bearer ")
-        ) {
-            throw new RuntimeException(
-                    "Authorization token is missing or invalid"
-            );
-        }
 
         String token =
                 authHeader.substring(7);
 
-        return jwtUtil.extractUserId(token);
+        return jwtUtil.extractUserId(
+                token
+        );
+    }
+
+    private void requireCustomer(
+            String authHeader
+    ) {
+
+        String token =
+                authHeader.substring(7);
+
+        String role =
+                jwtUtil.extractRole(token);
+
+        String normalizedRole =
+                normalizeRole(role);
+
+        if (!"CUSTOMER".equals(normalizedRole)) {
+            throw new ForbiddenOperationException(
+                    "Only customers can access the cart"
+            );
+        }
+    }
+
+    private String normalizeRole(
+            String role
+    ) {
+
+        if (role == null || role.isBlank()) {
+            return "";
+        }
+
+        String normalized =
+                role.trim().toUpperCase(Locale.ROOT);
+
+        if (normalized.startsWith("ROLE_")) {
+            normalized =
+                    normalized.substring(5);
+        }
+
+        return normalized;
     }
 }

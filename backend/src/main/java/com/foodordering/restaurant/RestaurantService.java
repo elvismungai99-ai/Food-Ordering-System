@@ -1,10 +1,14 @@
 package com.foodordering.restaurant;
 
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import com.foodordering.common.exception.BusinessRuleException;
+import com.foodordering.common.exception.ConflictException;
+import com.foodordering.common.exception.ResourceNotFoundException;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class RestaurantService {
@@ -14,143 +18,183 @@ public class RestaurantService {
     public RestaurantService(
             RestaurantRepository restaurantRepository
     ) {
-        this.restaurantRepository = restaurantRepository;
+        this.restaurantRepository =
+                restaurantRepository;
     }
 
+    @Transactional
     public RestaurantDto createRestaurant(
             UUID ownerId,
             RestaurantDto dto
     ) {
-        if (restaurantRepository.existsByOwnerId(ownerId)) {
-            throw new RuntimeException(
-                    "This account already has a registered restaurant"
+
+        if (ownerId == null) {
+            throw new BusinessRuleException(
+                    "Restaurant owner ID is required"
             );
         }
 
-        Restaurant restaurant = new Restaurant();
-
-        restaurant.setOwnerId(ownerId);
-        restaurant.setName(dto.getName());
-        restaurant.setDescription(dto.getDescription());
-        restaurant.setAddress(dto.getAddress());
-        restaurant.setOpeningTime(dto.getOpeningTime());
-        restaurant.setClosingTime(dto.getClosingTime());
-        restaurant.setCategory(dto.getCategory());
-
-        if (dto.getStatus() != null) {
-            restaurant.setStatus(dto.getStatus());
+        if (
+                restaurantRepository
+                        .existsByOwnerId(ownerId)
+        ) {
+            throw new ConflictException(
+                    "A restaurant already exists for this owner"
+            );
         }
 
-        Restaurant savedRestaurant =
-                restaurantRepository.save(restaurant);
+        validateRestaurantTimes(dto);
 
-        return new RestaurantDto(savedRestaurant);
-    }
+        Restaurant restaurant =
+                new Restaurant();
 
-    public RestaurantDto getMyRestaurant(UUID ownerId) {
-        Restaurant restaurant = restaurantRepository
-                .findByOwnerId(ownerId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "No restaurant found for this account"
-                        )
+        restaurant.setOwnerId(
+                ownerId
+        );
+
+        restaurant.setName(
+                dto
+                        .getName()
+                        .trim()
+        );
+
+        restaurant.setDescription(
+                normalizeOptional(
+                        dto.getDescription()
+                )
+        );
+
+        restaurant.setAddress(
+                dto
+                        .getAddress()
+                        .trim()
+        );
+
+        restaurant.setOpeningTime(
+                dto.getOpeningTime()
+        );
+
+        restaurant.setClosingTime(
+                dto.getClosingTime()
+        );
+
+        restaurant.setStatus(
+                dto.getStatus()
+        );
+
+        restaurant.setCategory(
+                normalizeOptional(
+                        dto.getCategory()
+                )
+        );
+
+        Restaurant saved =
+                restaurantRepository.save(
+                        restaurant
                 );
 
-        return new RestaurantDto(restaurant);
+        return new RestaurantDto(
+                saved
+        );
     }
 
-    public RestaurantDto updateMyRestaurant(
-            UUID ownerId,
-            RestaurantDto dto
+    @Transactional(readOnly = true)
+    public RestaurantDto getMyRestaurant(
+            UUID ownerId
     ) {
-        Restaurant restaurant = restaurantRepository
-                .findByOwnerId(ownerId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "No restaurant found for this account"
-                        )
-                );
 
-        if (dto.getName() != null) {
-            restaurant.setName(dto.getName());
-        }
+        Restaurant restaurant =
+                restaurantRepository
+                        .findByOwnerId(ownerId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Restaurant not found for this owner"
+                                )
+                        );
 
-        if (dto.getDescription() != null) {
-            restaurant.setDescription(dto.getDescription());
-        }
-
-        if (dto.getAddress() != null) {
-            restaurant.setAddress(dto.getAddress());
-        }
-
-        if (dto.getOpeningTime() != null) {
-            restaurant.setOpeningTime(dto.getOpeningTime());
-        }
-
-        if (dto.getClosingTime() != null) {
-            restaurant.setClosingTime(dto.getClosingTime());
-        }
-
-        if (dto.getStatus() != null) {
-            restaurant.setStatus(dto.getStatus());
-        }
-
-        if (dto.getCategory() != null) {
-            restaurant.setCategory(dto.getCategory());
-        }
-
-        Restaurant savedRestaurant =
-                restaurantRepository.save(restaurant);
-
-        return new RestaurantDto(savedRestaurant);
+        return new RestaurantDto(
+                restaurant
+        );
     }
 
-    public List<RestaurantDto> getAllRestaurants() {
-        return restaurantRepository
-                .findAll()
-                .stream()
-                .map(RestaurantDto::new)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public RestaurantDto getRestaurant(
+            UUID restaurantId
+    ) {
+
+        Restaurant restaurant =
+                restaurantRepository
+                        .findById(restaurantId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Restaurant not found"
+                                )
+                        );
+
+        return new RestaurantDto(
+                restaurant
+        );
     }
 
-    public RestaurantDto getRestaurantById(UUID id) {
-        Restaurant restaurant = restaurantRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Restaurant not found"
-                        )
-                );
-
-        return new RestaurantDto(restaurant);
-    }
-
+    @Transactional(readOnly = true)
     public List<RestaurantDto> searchRestaurants(
             String search,
             String category
     ) {
-        String normalizedSearch =
-                search == null || search.isBlank()
-                        ? null
-                        : search.toLowerCase();
 
-        String normalizedCategory =
-                category == null || category.isBlank()
-                        ? null
-                        : category;
+        String safeSearch =
+                normalizeOptional(search);
+
+        String safeCategory =
+                normalizeOptional(category);
 
         return restaurantRepository
                 .searchRestaurants(
-                        normalizedSearch,
-                        normalizedCategory
+                        safeSearch,
+                        safeCategory
                 )
                 .stream()
                 .map(RestaurantDto::new)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public List<String> getAllCategories() {
+    @Transactional(readOnly = true)
+    public List<String> getCategories() {
+
         return restaurantRepository
                 .findDistinctCategories();
+    }
+
+    private void validateRestaurantTimes(
+            RestaurantDto dto
+    ) {
+
+        if (
+                dto.getOpeningTime() != null
+                && dto.getClosingTime() != null
+                && dto
+                        .getOpeningTime()
+                        .equals(
+                                dto.getClosingTime()
+                        )
+        ) {
+            throw new BusinessRuleException(
+                    "Opening time and closing time cannot be the same"
+            );
+        }
+    }
+
+    private String normalizeOptional(
+            String value
+    ) {
+
+        if (
+                value == null
+                || value.isBlank()
+        ) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

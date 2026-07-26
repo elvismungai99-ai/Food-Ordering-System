@@ -1,6 +1,7 @@
 package com.foodordering.admin;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -97,10 +98,29 @@ public class AdminController {
     }
 
     private void requireAdmin(String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        String role = jwtUtil.extractRole(token);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("Authorization token is missing or invalid");
+        }
+
+        String token = authHeader.substring(7);
+        String role = normalizeRole(jwtUtil.extractRole(token));
+
         if (!Role.SUPER_ADMIN.equals(role)) {
             throw new RuntimeException("Access denied: admin privileges required");
         }
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) {
+            return "";
+        }
+
+        String normalized = role.trim().toUpperCase(Locale.ROOT);
+
+        if (normalized.startsWith("ROLE_")) {
+            normalized = normalized.substring(5);
+        }
+
+        return normalized;
     }
 }

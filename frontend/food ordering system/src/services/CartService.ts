@@ -1,4 +1,7 @@
 import api from "../api/axios";
+import {
+  requestData,
+} from "./request";
 
 export interface CartItem {
   id: string;
@@ -47,54 +50,54 @@ export interface AddCartItemRequest {
 }
 
 export async function getCart(): Promise<Cart> {
-  const response =
-    await api.get<Cart>("/cart");
-
-  return response.data;
+  return requestData(
+    () => api.get<Cart>("/cart"),
+    "Unable to load your cart."
+  );
 }
 
 export async function addCartItem(
   request: AddCartItemRequest
 ): Promise<Cart> {
-  const response =
-    await api.post<Cart>(
+  return requestData(
+    () => api.post<Cart>(
       "/cart/items",
       request
-    );
-
-  return response.data;
+    ),
+    "Unable to add this item to your cart."
+  );
 }
 
 export async function updateCartItemQuantity(
   cartItemId: string,
   quantity: number
 ): Promise<Cart> {
-  const response =
-    await api.patch<Cart>(
+  return requestData(
+    () => api.patch<Cart>(
       `/cart/items/${cartItemId}`,
       { quantity }
-    );
-
-  return response.data;
+    ),
+    "Unable to update the item quantity."
+  );
 }
 
 export async function removeCartItem(
   cartItemId: string
 ): Promise<Cart> {
-  const response =
-    await api.delete<Cart>(
+  return requestData(
+    () => api.delete<Cart>(
       `/cart/items/${cartItemId}`
-    );
-
-  return response.data;
+    ),
+    "Unable to remove the cart item."
+  );
 }
 
 export async function acceptCartPriceChanges():
 Promise<Cart> {
-  const response =
-    await api.post<Cart>(
+  return requestData(
+    () => api.post<Cart>(
       "/cart/accept-price-changes"
-    );
-
-  return response.data;
+    ),
+    "Unable to accept the updated prices."
+  );
 }

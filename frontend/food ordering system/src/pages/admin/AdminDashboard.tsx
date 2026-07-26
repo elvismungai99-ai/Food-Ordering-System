@@ -7,13 +7,16 @@ import {
   Customer,
   Restaurant,
 } from "../../services/AdminService";
+import {
+  getApiErrorMessage,
+} from "../../utils/apiError";
 
 function AdminDashboard() {
-  console.log("AdminDashboard component rendered!");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -26,7 +29,9 @@ function AdminDashboard() {
       setCustomers(customersData);
       setRestaurants(restaurantsData);
     } catch (err) {
-      setError("Failed to load admin data.");
+      setError(
+        getApiErrorMessage(err)
+      );
       console.error(err);
     } finally {
       setLoading(false);
@@ -40,22 +45,34 @@ function AdminDashboard() {
   const handleDeleteCustomer = async (id: string, name: string) => {
     if (!window.confirm(`Delete customer "${name}"? This cannot be undone.`)) return;
     try {
+      setDeletingId(id);
+      setError("");
       await deleteCustomer(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      alert("Failed to delete customer.");
+      setError(
+        getApiErrorMessage(err)
+      );
       console.error(err);
+    } finally {
+      setDeletingId("");
     }
   };
 
   const handleDeleteRestaurant = async (id: string, name: string) => {
     if (!window.confirm(`Delete restaurant "${name}"? This cannot be undone.`)) return;
     try {
+      setDeletingId(id);
+      setError("");
       await deleteRestaurant(id);
       setRestaurants((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      alert("Failed to delete restaurant.");
+      setError(
+        getApiErrorMessage(err)
+      );
       console.error(err);
+    } finally {
+      setDeletingId("");
     }
   };
 
@@ -92,10 +109,13 @@ function AdminDashboard() {
                     <td className="px-4 py-3">{new Date(c.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
                       <button
+                        disabled={deletingId === c.id}
                         onClick={() => handleDeleteCustomer(c.id, c.fullName)}
-                        className="text-red-600 hover:text-red-800 font-medium"
+                        className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
                       >
-                        Delete
+                        {deletingId === c.id
+                          ? "Deleting..."
+                          : "Delete"}
                       </button>
                     </td>
                   </tr>
@@ -132,10 +152,13 @@ function AdminDashboard() {
                     <td className="px-4 py-3">{r.status}</td>
                     <td className="px-4 py-3 text-right">
                       <button
+                        disabled={deletingId === r.id}
                         onClick={() => handleDeleteRestaurant(r.id, r.name)}
-                        className="text-red-600 hover:text-red-800 font-medium"
+                        className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
                       >
-                        Delete
+                        {deletingId === r.id
+                          ? "Deleting..."
+                          : "Delete"}
                       </button>
                     </td>
                   </tr>

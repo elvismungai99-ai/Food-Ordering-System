@@ -1,5 +1,8 @@
 package com.foodordering.cart.dto;
 
+import com.foodordering.cart.Cart;
+import com.foodordering.cart.CartItem;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +34,72 @@ public class CartDto {
     private boolean hasUnavailableItems;
 
     public CartDto() {
+    }
+
+    public CartDto(
+            Cart cart
+    ) {
+        this.id = cart.getId();
+        this.customerId = cart.getCustomerId();
+
+        BigDecimal total =
+                BigDecimal.ZERO;
+
+        int itemCount = 0;
+
+        for (CartItem item : cart.getItems()) {
+            CartItemDto itemDto =
+                    new CartItemDto();
+
+            itemDto.setId(
+                    item.getId()
+            );
+
+            itemDto.setMenuItemId(
+                    item.getMenuItemId()
+            );
+
+            itemDto.setQuantity(
+                    item.getQuantity()
+            );
+
+            itemDto.setUnitPrice(
+                    item.getUnitPrice()
+            );
+
+            itemDto.setCurrentPrice(
+                    item.getUnitPrice()
+            );
+
+            BigDecimal subtotal =
+                    item.calculateSubtotal();
+
+            itemDto.setSubtotal(
+                    subtotal
+            );
+
+            itemDto.setCurrentSubtotal(
+                    subtotal
+            );
+
+            itemDto.setAvailable(true);
+            itemDto.setPriceChanged(false);
+
+            this.items.add(itemDto);
+
+            total =
+                    total.add(subtotal);
+
+            if (item.getQuantity() != null) {
+                itemCount += item.getQuantity();
+            }
+        }
+
+        this.totalItems = itemCount;
+        this.previousTotalAmount = total;
+        this.totalAmount = total;
+        this.hasPriceChanges = false;
+        this.hasUnavailableItems = false;
     }
 
     public UUID getId() {

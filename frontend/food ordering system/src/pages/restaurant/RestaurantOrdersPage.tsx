@@ -17,6 +17,10 @@ import {
   type OrderStatus,
 } from "../../services/OrderService";
 
+import {
+  getMyRestaurant,
+} from "../../services/RestaurantService";
+
 function RestaurantOrdersPage() {
   const navigate = useNavigate();
 
@@ -34,26 +38,29 @@ function RestaurantOrdersPage() {
     setUpdatingOrderId,
   ] = useState<string | null>(null);
 
-  const restaurantId =
-    localStorage.getItem(
-      "restaurantId"
-    );
-
   const loadOrders =
     useCallback(async () => {
-      if (!restaurantId) {
-        setError(
-          "Restaurant ID was not found."
-        );
-
-        setLoading(false);
-
-        return;
-      }
-
       try {
         setLoading(true);
         setError("");
+
+        let restaurantId =
+          localStorage.getItem(
+            "restaurantId"
+          );
+
+        if (!restaurantId) {
+          const restaurant =
+            await getMyRestaurant();
+
+          restaurantId =
+            restaurant.id;
+
+          localStorage.setItem(
+            "restaurantId",
+            restaurant.id
+          );
+        }
 
         const data =
           await getRestaurantOrders(
@@ -76,7 +83,7 @@ function RestaurantOrdersPage() {
         setLoading(false);
       }
 
-    }, [restaurantId]);
+    }, []);
 
   useEffect(() => {
     loadOrders();

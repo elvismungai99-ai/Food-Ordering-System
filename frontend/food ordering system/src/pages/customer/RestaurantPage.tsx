@@ -4,11 +4,13 @@ import {
   useState,
 } from "react";
 
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import api from "../../api/axios";
 import CustomerHeader from "../../components/customer/CustomerHeader";
+import {
+  getApiErrorMessage,
+} from "../../utils/apiError";
 
 interface Restaurant {
   id: string;
@@ -85,11 +87,6 @@ function RestaurantPage() {
           },
         });
 
-        console.log(
-          "Restaurants API response:",
-          response.data
-        );
-
         if (Array.isArray(response.data)) {
           setRestaurants(response.data);
         } else {
@@ -108,9 +105,8 @@ function RestaurantPage() {
         setRestaurants([]);
 
         setError(
-          getErrorMessage(
-            requestError,
-            "Failed to load restaurants. Please try again."
+          getApiErrorMessage(
+            requestError
           )
         );
       } finally {
@@ -388,48 +384,6 @@ function RestaurantPage() {
       </main>
     </div>
   );
-}
-
-function getErrorMessage(
-  error: unknown,
-  fallbackMessage: string
-): string {
-  if (axios.isAxiosError(error)) {
-    const responseData =
-      error.response?.data;
-
-    if (typeof responseData === "string") {
-      return responseData;
-    }
-
-    if (
-      responseData &&
-      typeof responseData === "object" &&
-      "message" in responseData &&
-      typeof responseData.message ===
-        "string"
-    ) {
-      return responseData.message;
-    }
-
-    if (error.response?.status === 404) {
-      return "The restaurants endpoint was not found.";
-    }
-
-    if (error.response?.status === 401) {
-      return "Your session has expired. Please log in again.";
-    }
-
-    if (error.response?.status === 403) {
-      return "You do not have permission to view restaurants.";
-    }
-
-    if (!error.response) {
-      return "The backend server could not be reached.";
-    }
-  }
-
-  return fallbackMessage;
 }
 
 export default RestaurantPage;

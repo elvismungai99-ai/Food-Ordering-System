@@ -1,130 +1,671 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { register } from "../../../services/AuthService";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useState,
+} from "react";
+
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  register,
+} from "../../../services/AuthService";
+
+import {
+  getApiErrorMessage,
+  getApiFieldErrors,
+} from "../../../utils/apiError";
+
+interface RegisterFormData {
+
+  fullName: string;
+
+  email: string;
+
+  phoneNumber: string;
+
+  password: string;
+
+  confirmPassword: string;
+
+  role:
+    | "CUSTOMER"
+    | "OWNER";
+}
+
+const phoneNumberPattern =
+  /^(?:\+254|254|0)?[\s-]?[17](?:[\s-]?\d){8}$/;
+
+const emailPattern =
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function RegisterPage() {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+
+  const navigate =
+    useNavigate();
+
+  // =========================================================
+  // FORM STATE
+  // =========================================================
+
+  const [
+    formData,
+    setFormData,
+  ] = useState<RegisterFormData>({
+
+    fullName: "",
+
     email: "",
+
+    phoneNumber: "",
+
     password: "",
+
+    confirmPassword: "",
+
+    /*
+     * IMPORTANT:
+     *
+     * A new registration defaults
+     * to CUSTOMER.
+     */
     role: "CUSTOMER",
   });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // =========================================================
+  // UI STATE
+  // =========================================================
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    fieldErrors,
+    setFieldErrors,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  // =========================================================
+  // HANDLE INPUT
+  // =========================================================
+
+  const handleChange = (
+    event: ChangeEvent<
+      HTMLInputElement
+      | HTMLSelectElement
+    >
+  ) => {
+
+    const {
+      name,
+      value,
+    } = event.target;
+
+    setFormData(
+      current => ({
+        ...current,
+        [name]: value,
+      })
+    );
+
+    /*
+     * Remove the old validation error
+     * belonging to this field once the
+     * user starts correcting it.
+     */
+    setFieldErrors(
+      current => {
+
+        const updated = {
+          ...current,
+        };
+
+        delete updated[name];
+
+        return updated;
+      }
+    );
+
     setError("");
-    setLoading(true);
+  };
+
+  // =========================================================
+  // SUBMIT REGISTRATION
+  // =========================================================
+
+  const handleSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+
+    event.preventDefault();
+
+    setError("");
+
+    setFieldErrors({});
+
+    const nextFieldErrors:
+      Record<string, string> = {};
+
+    const normalizedPhoneNumber =
+      formData
+        .phoneNumber
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/-/g, "");
+
+    if (!formData.fullName.trim()) {
+      nextFieldErrors.fullName =
+        "Full name is required.";
+    }
+
+    if (!formData.email.trim()) {
+      nextFieldErrors.email =
+        "Email is required.";
+    } else if (
+      !emailPattern.test(
+        formData.email.trim()
+      )
+    ) {
+      nextFieldErrors.email =
+        "Enter a valid email address, for example name@example.com.";
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      nextFieldErrors.phoneNumber =
+        "Phone number is required.";
+    } else if (
+      !phoneNumberPattern.test(
+        formData.phoneNumber.trim()
+      )
+    ) {
+      nextFieldErrors.phoneNumber =
+        "Enter a valid Kenyan phone number, for example 0712345678 or +254712345678.";
+    }
+
+    if (!formData.password) {
+      nextFieldErrors.password =
+        "Password is required.";
+    } else if (formData.password.length < 8) {
+      nextFieldErrors.password =
+        "Password must be at least 8 characters.";
+    } else if (formData.password.length > 72) {
+      nextFieldErrors.password =
+        "Password must not exceed 72 characters.";
+    }
+
+    if (!formData.confirmPassword) {
+      nextFieldErrors.confirmPassword =
+        "Confirm your password.";
+    } else if (
+      formData.password
+      !== formData.confirmPassword
+    ) {
+      nextFieldErrors.confirmPassword =
+        "Passwords do not match.";
+    }
+
+    if (
+      Object.keys(
+        nextFieldErrors
+      ).length > 0
+    ) {
+
+      setFieldErrors(
+        nextFieldErrors
+      );
+
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // BUILD REQUEST
+    // ---------------------------------------------------------
+
+    const registrationData = {
+
+      fullName:
+        formData
+          .fullName
+          .trim(),
+
+      email:
+        formData
+          .email
+          .trim()
+          .toLowerCase(),
+
+      phoneNumber:
+        normalizedPhoneNumber,
+
+      password:
+        formData.password,
+
+      role:
+        formData.role,
+    };
 
     try {
-      await register(formData);
-      // Redirect to login after successful registration
-      navigate("/login");
-    } catch (err) {
-      setError("Registration failed. Please check your details and try again.");
-      console.error(err);
+
+      setLoading(true);
+
+      const data =
+        await register(
+          registrationData
+        );
+
+      // =====================================================
+      // SAVE AUTH DATA
+      // =====================================================
+
+      if (data.token) {
+
+        localStorage.setItem(
+          "token",
+          data.token
+        );
+      }
+
+      if (data.role) {
+
+        localStorage.setItem(
+          "role",
+          data.role
+        );
+      }
+
+      if (data.userId) {
+
+        localStorage.setItem(
+          "userId",
+          data.userId
+        );
+      }
+
+      if (data.firstName) {
+
+        localStorage.setItem(
+          "firstName",
+          data.firstName
+        );
+      }
+
+      // =====================================================
+      // ROLE REDIRECTION
+      // =====================================================
+
+      if (
+        data.role === "CUSTOMER"
+      ) {
+
+        navigate(
+          "/customer/dashboard"
+        );
+
+        return;
+      }
+
+      if (
+        data.role === "OWNER"
+      ) {
+
+        navigate(
+          "/restaurant/dashboard"
+        );
+
+        return;
+      }
+
+      /*
+       * SUPER_ADMIN should never come through
+       * public registration.
+       */
+      setError(
+        "Registration succeeded but the returned account role is not supported."
+      );
+
+    } catch (
+      requestError
+    ) {
+
+      // =====================================================
+      // GENERAL ERROR
+      // =====================================================
+
+      const apiFieldErrors =
+        getApiFieldErrors(
+          requestError
+        );
+
+      // =====================================================
+      // FIELD VALIDATION ERRORS
+      // =====================================================
+
+      setFieldErrors(
+        apiFieldErrors
+      );
+
+      setError(
+        Object.keys(
+          apiFieldErrors
+        ).length > 0
+          ? "Please correct the highlighted fields."
+          : getApiErrorMessage(
+              requestError
+            )
+      );
+
     } finally {
+
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-10 flex items-center justify-center">
-      <div className="w-full max-w-xl rounded-[32px] border border-slate-200 bg-white/95 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-        <div className="mb-6 text-center">
-          <p className="text-sm uppercase tracking-[0.35em] text-teal-600">Create account</p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-950">Register for Food Ordering</h1>
-          <p className="mt-2 text-sm text-slate-500">Choose a role and start ordering or managing your restaurant.</p>
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+
+      <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+
+        {/* HEADER */}
+
+        <div className="text-center">
+
+          <h1 className="text-3xl font-bold text-slate-950">
+            Create Account
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Create your Food Ordering System account.
+          </p>
+
         </div>
 
-        {/* Error Message */}
+        {/* GENERAL ERROR */}
+
         {error && (
-          <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+
             {error}
+
           </div>
+
         )}
 
-        <form className="grid gap-5" onSubmit={handleSubmit}>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
-              First Name
-              <input
-                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                placeholder="First Name"
-                required
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              />
+        <form
+          onSubmit={
+            handleSubmit
+          }
+          className="mt-8 space-y-5"
+        >
+
+          {/* FULL NAME */}
+
+          <div>
+
+            <label
+              htmlFor="fullName"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Full Name
             </label>
 
-            <label className="block text-sm font-medium text-slate-700">
-              Last Name
-              <input
-                className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-                placeholder="Last Name"
-                required
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              />
-            </label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              value={
+                formData.fullName
+              }
+              onChange={
+                handleChange
+              }
+              placeholder="Enter your full name"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+            />
+
+            {fieldErrors.fullName && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.fullName}
+              </p>
+
+            )}
+
           </div>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Email address
-            <input
-              className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-              placeholder="Email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-          </label>
+          {/* EMAIL */}
 
-          <label className="block text-sm font-medium text-slate-700">
-            Password
-            <input
-              className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-              type="password"
-              placeholder="Password"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
-          </label>
+          <div>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Role
-            <select
-              className="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-slate-700"
             >
-              <option value="CUSTOMER">CUSTOMER</option>
-              <option value="OWNER">OWNER</option>
+              Email
+            </label>
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={
+                formData.email
+              }
+              onChange={
+                handleChange
+              }
+              placeholder="example@email.com"
+              autoComplete="email"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+            />
+
+            {fieldErrors.email && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.email}
+              </p>
+
+            )}
+
+          </div>
+
+          {/* PHONE NUMBER */}
+
+          <div>
+
+            <label
+              htmlFor="phoneNumber"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Phone Number
+            </label>
+
+            <input
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={
+                formData.phoneNumber
+              }
+              onChange={
+                handleChange
+              }
+              placeholder="0712345678"
+              autoComplete="tel"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+            />
+
+            {fieldErrors.phoneNumber && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.phoneNumber}
+              </p>
+
+            )}
+
+          </div>
+
+          {/* ACCOUNT TYPE */}
+
+          <div>
+
+            <label
+              htmlFor="role"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Account Type
+            </label>
+
+            <select
+              id="role"
+              name="role"
+              value={
+                formData.role
+              }
+              onChange={
+                handleChange
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500"
+            >
+
+              <option value="CUSTOMER">
+                Customer
+              </option>
+
+              <option value="OWNER">
+                Restaurant Owner
+              </option>
+
             </select>
-          </label>
+
+            {fieldErrors.role && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.role}
+              </p>
+
+            )}
+
+          </div>
+
+          {/* PASSWORD */}
+
+          <div>
+
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Password
+            </label>
+
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={
+                formData.password
+              }
+              onChange={
+                handleChange
+              }
+              placeholder="Enter your password"
+              autoComplete="new-password"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+            />
+
+            {fieldErrors.password && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.password}
+              </p>
+
+            )}
+
+          </div>
+
+          {/* CONFIRM PASSWORD */}
+
+          <div>
+
+            <label
+              htmlFor="confirmPassword"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Confirm Password
+            </label>
+
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={
+                formData.confirmPassword
+              }
+              onChange={
+                handleChange
+              }
+              placeholder="Confirm password"
+              autoComplete="new-password"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+            />
+
+            {fieldErrors.confirmPassword && (
+
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.confirmPassword}
+              </p>
+
+            )}
+
+          </div>
+
+          {/* SUBMIT */}
 
           <button
             type="submit"
-            disabled={loading}
-            className="inline-flex w-full justify-center rounded-3xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/15 transition hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={
+              loading
+            }
+            className="w-full rounded-3xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {loading ? "Registering..." : "Register"}
+
+            {loading
+              ? "Creating account..."
+              : "Create Account"}
+
           </button>
+
         </form>
 
+        {/* LOGIN LINK */}
+
         <p className="mt-6 text-center text-sm text-slate-500">
+
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-teal-600 hover:text-teal-700">
-            Login here
+
+          <Link
+            to="/login"
+            className="font-semibold text-indigo-600"
+          >
+            Login
           </Link>
+
         </p>
+
       </div>
-    </div>
+
+    </main>
   );
 }
 

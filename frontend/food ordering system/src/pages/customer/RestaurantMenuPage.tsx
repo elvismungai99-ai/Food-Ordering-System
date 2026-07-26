@@ -21,47 +21,33 @@ import {
 function RestaurantMenuPage() {
   const navigate = useNavigate();
 
-  const {
-    restaurantId,
-  } = useParams<{
-    restaurantId: string;
-  }>();
+  const { restaurantId } =
+    useParams<{
+      restaurantId: string;
+    }>();
 
-  const {
-    addToCart,
-  } = useCart();
+  const { addToCart } =
+    useCart();
 
-  const [
-    menuItems,
-    setMenuItems,
-  ] = useState<MenuItem[]>([]);
+  const [menuItems, setMenuItems] =
+    useState<MenuItem[]>([]);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    addingItemId,
-    setAddingItemId,
-  ] = useState<string | null>(
-    null
-  );
+  const [error, setError] =
+    useState("");
 
   const [
     successMessage,
     setSuccessMessage,
   ] = useState("");
 
+  const [
+    addingItemId,
+    setAddingItemId,
+  ] = useState<string | null>(null);
 
-  /*
-   * Load menu items for the selected restaurant.
-   */
   useEffect(() => {
     const loadMenu = async () => {
       if (!restaurantId) {
@@ -70,7 +56,6 @@ function RestaurantMenuPage() {
         );
 
         setLoading(false);
-
         return;
       }
 
@@ -84,7 +69,6 @@ function RestaurantMenuPage() {
           );
 
         setMenuItems(data);
-
       } catch (requestError) {
         console.error(
           "Failed to load restaurant menu:",
@@ -92,22 +76,16 @@ function RestaurantMenuPage() {
         );
 
         setError(
-          "Failed to load the restaurant menu. Please try again."
+          "Unable to load the restaurant menu."
         );
-
       } finally {
         setLoading(false);
       }
     };
 
     loadMenu();
-
   }, [restaurantId]);
 
-
-  /*
-   * Group menu items by category.
-   */
   const groupedMenuItems =
     useMemo(() => {
       return menuItems.reduce<
@@ -117,11 +95,9 @@ function RestaurantMenuPage() {
           groups,
           menuItem
         ) => {
-
           const category =
-            menuItem.category
-              ?.trim()
-              || "Other";
+            menuItem.category?.trim()
+            || "Other";
 
           if (!groups[category]) {
             groups[category] = [];
@@ -135,17 +111,11 @@ function RestaurantMenuPage() {
         },
         {}
       );
-
     }, [menuItems]);
 
-
-  /*
-   * Add menu item to customer's cart.
-   */
   const handleAddToCart = async (
     menuItem: MenuItem
   ) => {
-
     if (!menuItem.available) {
       return;
     }
@@ -156,7 +126,6 @@ function RestaurantMenuPage() {
       );
 
       setError("");
-
       setSuccessMessage("");
 
       await addToCart(
@@ -167,7 +136,6 @@ function RestaurantMenuPage() {
       setSuccessMessage(
         `${menuItem.name} added to cart.`
       );
-
     } catch (requestError) {
       console.error(
         "Failed to add item to cart:",
@@ -177,18 +145,26 @@ function RestaurantMenuPage() {
       setError(
         "Unable to add this item to your cart."
       );
-
     } finally {
-      setAddingItemId(
-        null
-      );
+      setAddingItemId(null);
     }
   };
 
+  const formatPrice = (
+    amount: number
+  ) => {
+    return new Intl.NumberFormat(
+      "en-KE",
+      {
+        style: "currency",
+        currency: "KES",
+      }
+    ).format(amount);
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <p className="text-slate-500">
           Loading menu...
         </p>
@@ -196,28 +172,22 @@ function RestaurantMenuPage() {
     );
   }
 
-
   return (
-    <div className="min-h-screen bg-slate-100 p-6 md:p-8">
-
+    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
       <div className="mx-auto max-w-6xl">
 
-        {/* Header */}
-
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-
           <div>
             <h1 className="text-3xl font-bold text-slate-950">
               Restaurant Menu
             </h1>
 
             <p className="mt-2 text-slate-500">
-              Browse available menu items and add them to your cart.
+              Browse available items and add them to your cart.
             </p>
           </div>
 
           <div className="flex gap-3">
-
             <button
               type="button"
               onClick={() =>
@@ -225,7 +195,7 @@ function RestaurantMenuPage() {
                   "/customer/restaurants"
                 )
               }
-              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
             >
               ← Restaurants
             </button>
@@ -237,17 +207,12 @@ function RestaurantMenuPage() {
                   "/customer/cart"
                 )
               }
-              className="rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white"
             >
               View Cart
             </button>
-
           </div>
-
         </div>
-
-
-        {/* Error */}
 
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -255,94 +220,54 @@ function RestaurantMenuPage() {
           </div>
         )}
 
-
-        {/* Success */}
-
         {successMessage && (
           <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             {successMessage}
           </div>
         )}
 
-
-        {/* Empty Menu */}
-
         {menuItems.length === 0 ? (
-
           <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center">
-
             <p className="text-slate-500">
               This restaurant does not have any menu items yet.
             </p>
-
           </div>
-
         ) : (
-
           <div className="space-y-10">
-
             {Object.entries(
               groupedMenuItems
             ).map(
-              ([
-                category,
-                items,
-              ]) => (
-
-                <section
-                  key={category}
-                >
-
+              ([category, items]) => (
+                <section key={category}>
                   <h2 className="mb-5 text-2xl font-semibold text-slate-950">
                     {category}
                   </h2>
 
-
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
                     {items.map(
-                      (
-                        menuItem
-                      ) => (
-
+                      (menuItem) => (
                         <article
                           key={
                             menuItem.id
                           }
                           className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm"
                         >
-
-                          {/* Item Image */}
-
-                          {menuItem.imageUrl ? (
-
-                            <img
-                              src={
-                                menuItem.imageUrl
-                              }
-                              alt={
-                                menuItem.name
-                              }
-                              className="h-48 w-full object-cover"
-                            />
-
-                          ) : (
-
-                            <div className="flex h-48 items-center justify-center bg-slate-100 text-slate-400">
-                              No image
-                            </div>
-
-                          )}
-
-
-                          {/* Item Details */}
+                          {/*
+                           * The imageUrl returned by the API is
+                           * passed into the reusable image component.
+                           */}
+                          <CustomerMenuItemImage
+                            imageUrl={
+                              menuItem.imageUrl
+                            }
+                            name={
+                              menuItem.name
+                            }
+                          />
 
                           <div className="p-5">
-
                             <div className="flex items-start justify-between gap-3">
-
                               <div>
-
                                 <h3 className="text-lg font-semibold text-slate-900">
                                   {
                                     menuItem.name
@@ -354,47 +279,32 @@ function RestaurantMenuPage() {
                                     menuItem.description
                                   }
                                 </p>
-
                               </div>
 
-
                               <span
-                                className={
-                                  `rounded-full px-3 py-1 text-xs font-semibold ${
-                                    menuItem.available
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-slate-100 text-slate-500"
-                                  }`
-                                }
-                              >
-                                {
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
                                   menuItem.available
-                                    ? "Available"
-                                    : "Unavailable"
-                                }
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                {menuItem.available
+                                  ? "Available"
+                                  : "Unavailable"}
                               </span>
-
                             </div>
 
-
-                            {/* Price */}
-
                             <p className="mt-5 text-lg font-bold text-indigo-600">
-                              KES{" "}
-                              {
+                              {formatPrice(
                                 menuItem.price
-                              }
+                              )}
                             </p>
-
-
-                            {/* Add To Cart */}
 
                             <button
                               type="button"
                               disabled={
                                 !menuItem.available
-                                ||
-                                addingItemId
+                                || addingItemId
                                   === menuItem.id
                               }
                               onClick={() =>
@@ -402,38 +312,62 @@ function RestaurantMenuPage() {
                                   menuItem
                                 )
                               }
-                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                             >
-                              {
-                                addingItemId
-                                  === menuItem.id
-                                  ? "Adding..."
-                                  : menuItem.available
-                                    ? "Add to Cart"
-                                    : "Unavailable"
-                              }
+                              {addingItemId
+                              === menuItem.id
+                                ? "Adding..."
+                                : menuItem.available
+                                  ? "Add to Cart"
+                                  : "Unavailable"}
                             </button>
-
                           </div>
-
                         </article>
-
                       )
                     )}
-
                   </div>
-
                 </section>
-
               )
             )}
-
           </div>
-
         )}
-
       </div>
+    </main>
+  );
+}
 
+function CustomerMenuItemImage({
+  imageUrl,
+  name,
+}: {
+  imageUrl?: string | null;
+  name: string;
+}) {
+  const [failed, setFailed] =
+    useState(false);
+
+  const canDisplay =
+    Boolean(imageUrl?.trim())
+    && !failed;
+
+  return (
+    <div className="h-48 w-full overflow-hidden bg-slate-100">
+      {canDisplay ? (
+        <img
+          src={imageUrl ?? ""}
+          alt={name}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() =>
+            setFailed(true)
+          }
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+          No image available
+        </div>
+      )}
     </div>
   );
 }

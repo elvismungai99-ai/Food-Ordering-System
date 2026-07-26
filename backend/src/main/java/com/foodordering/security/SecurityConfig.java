@@ -2,87 +2,94 @@ package com.foodordering.security;
 
 import java.util.List;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+import org.springframework.security.config.http.SessionCreationPolicy;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
+
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+
+import com.foodordering.security.ratelimit.LoginRateLimitFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter
+            jwtAuthenticationFilter;
+
+    private final LoginRateLimitFilter
+            loginRateLimitFilter;
+
+    private final RestAuthenticationEntryPoint
+            restAuthenticationEntryPoint;
+
+    private final RestAccessDeniedHandler
+            restAccessDeniedHandler;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            LoginRateLimitFilter loginRateLimitFilter,
+            RestAuthenticationEntryPoint restAuthenticationEntryPoint,
+            RestAccessDeniedHandler restAccessDeniedHandler
+    ) {
+
+        this.jwtAuthenticationFilter =
+                jwtAuthenticationFilter;
+
+        this.loginRateLimitFilter =
+                loginRateLimitFilter;
+
+        this.restAuthenticationEntryPoint =
+                restAuthenticationEntryPoint;
+
+        this.restAccessDeniedHandler =
+                restAccessDeniedHandler;
+    }
+
+    // =====================================================
+    // SECURITY FILTER CHAIN
+    // =====================================================
+
     @Bean
-    public SecurityFilterChain securityFilterChain(
+    @org.springframework.core.annotation.Order(1)
+    public SecurityFilterChain adminSecurityFilterChain(
             HttpSecurity http
     ) throws Exception {
 
         http
-                .cors(cors ->
-                        cors.configurationSource(
-                                corsConfigurationSource()
+                .securityMatcher(
+                        "/api/admin/**"
+                )
+                .cors(cors -> {
+                })
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
                         )
                 )
-                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-
-                        // Public authentication endpoints
-                        .requestMatchers(
-                                "/api/auth/**"
-                        )
-                        .permitAll()
-
-                        // Public restaurant browsing endpoints
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/restaurants/**"
-                        )
-                        .permitAll()
-
-                        // Public menu browsing endpoints
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/menu-items/**"
-                        )
-                        .permitAll()
-
-                        /*
-                         * Cart endpoints.
-                         *
-                         * These should eventually require a valid JWT.
-                         * During development, the controller still reads
-                         * the user ID from the Authorization header.
-                         */
-                        .requestMatchers(
-                                "/api/cart/**"
-                        )
-                        .permitAll()
-
-                        // Swagger documentation endpoints
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**"
-                        )
-                        .permitAll()
-
-                        // Spring Boot actuator endpoints
-                        .requestMatchers(
-                                "/actuator/**"
-                        )
-                        .permitAll()
-
-                        /*
-                         * Temporary development configuration.
-                         *
-                         * Keep this as permitAll until your JWT filter
-                         * and custom authentication provider are fully
-                         * connected to Spring Security.
-                         */
                         .anyRequest()
                         .permitAll()
                 );
@@ -91,13 +98,290 @@ public class SecurityConfig {
     }
 
     @Bean
+    @org.springframework.core.annotation.Order(2)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+
+        http
+
+                // =========================================
+                // CORS
+                // =========================================
+
+                .cors(cors -> {
+                })
+
+                // =========================================
+                // CSRF
+                // =========================================
+
+                /*
+                 * This is a stateless JWT REST API.
+                 */
+                .csrf(csrf ->
+                        csrf.disable()
+                )
+
+                // =========================================
+                // SESSION
+                // =========================================
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(
+                                restAuthenticationEntryPoint
+                        )
+                        .accessDeniedHandler(
+                                restAccessDeniedHandler
+                        )
+                )
+
+                // =========================================
+                // AUTHORIZATION
+                // =========================================
+
+                .authorizeHttpRequests(auth -> auth
+
+                        /*
+                         * Browser CORS preflight.
+                         */
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        )
+                        .permitAll()
+
+                        /*
+                         * IMPORTANT:
+                         *
+                         * Login and registration must
+                         * remain public.
+                         */
+                        .requestMatchers(
+                                "/api/auth/**"
+                        )
+                        .permitAll()
+
+                        // =================================
+                        // SUPER ADMIN
+                        // =================================
+
+                        .requestMatchers(
+                                "/api/admin/**"
+                        )
+                        .permitAll(
+                        )
+
+                        // =================================
+                        // RESTAURANT OWNER
+                        // =================================
+
+                        /*
+                         * The currently authenticated
+                         * OWNER loads their own restaurant.
+                         *
+                         * Keep this BEFORE broader
+                         * restaurant rules.
+                         */
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/restaurants/me"
+                        )
+                        .permitAll()
+
+                        /*
+                         * Restaurant creation.
+                         */
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/restaurants/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        /*
+                         * Restaurant update.
+                         */
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/restaurants/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/restaurants/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        // =================================
+                        // PUBLIC RESTAURANT BROWSING
+                        // =================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/restaurants",
+                                "/api/restaurants/categories",
+                                "/api/restaurants/{restaurantId}"
+                        )
+                        .permitAll()
+
+                        // =================================
+                        // PUBLIC MENU VIEWING
+                        // =================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/menu-items/restaurant/**"
+                        )
+                        .permitAll()
+
+                        // =================================
+                        // MENU MANAGEMENT
+                        // =================================
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/menu-items/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/menu-items/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/menu-items/**"
+                        )
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
+
+                        // =================================
+                        // CUSTOMER CART
+                        // =================================
+
+                        .requestMatchers(
+                                "/api/cart",
+                                "/api/cart/**"
+                        )
+                        .permitAll(
+                        )
+
+                        // =================================
+                        // ORDERS
+                        // =================================
+
+                        .requestMatchers(
+                                "/api/orders",
+                                "/api/orders/**"
+                        )
+                        .permitAll(
+                        )
+
+                        // =================================
+                        // EVERYTHING ELSE
+                        // =================================
+
+                        .anyRequest()
+                        .authenticated()
+                )
+
+                // =========================================
+
+                // JWT FILTER
+                // =========================================
+
+                .addFilterBefore(
+                        loginRateLimitFilter,
+                        AuthorizationFilter.class
+                )
+
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        AuthorizationFilter.class
+                );
+
+        return http.build();
+    }
+
+    // =====================================================
+    // CORS
+    // =====================================================
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter>
+    jwtAuthenticationFilterRegistration(
+            JwtAuthenticationFilter filter
+    ) {
+
+        FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                new FilterRegistrationBean<>(
+                        filter
+                );
+
+        registration.setEnabled(
+                false
+        );
+
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<LoginRateLimitFilter>
+    loginRateLimitFilterRegistration(
+            LoginRateLimitFilter filter
+    ) {
+
+        FilterRegistrationBean<LoginRateLimitFilter> registration =
+                new FilterRegistrationBean<>(
+                        filter
+                );
+
+        registration.setEnabled(
+                false
+        );
+
+        return registration;
+    }
+
+    @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
+        /*
+         * React/Vite development frontend.
+         */
         configuration.setAllowedOrigins(
                 List.of(
-                        "http://localhost:5173"
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173"
                 )
         );
 
@@ -113,10 +397,20 @@ public class SecurityConfig {
         );
 
         configuration.setAllowedHeaders(
-                List.of("*")
+                List.of(
+                        "Authorization",
+                        "Content-Type",
+                        "Accept"
+                )
         );
 
-        configuration.setAllowCredentials(true);
+        configuration.setAllowCredentials(
+                true
+        );
+
+        configuration.setMaxAge(
+                3600L
+        );
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
@@ -127,5 +421,28 @@ public class SecurityConfig {
         );
 
         return source;
+    }
+
+    // =====================================================
+    // PASSWORD ENCODER
+    // =====================================================
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+
+        return new BCryptPasswordEncoder();
+    }
+
+    // =====================================================
+    // AUTHENTICATION MANAGER
+    // =====================================================
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration
+    ) throws Exception {
+
+        return configuration
+                .getAuthenticationManager();
     }
 }

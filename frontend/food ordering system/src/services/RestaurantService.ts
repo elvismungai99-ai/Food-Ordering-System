@@ -1,4 +1,7 @@
 import api from "../api/axios";
+import {
+  requestData,
+} from "./request";
 
 export interface Restaurant {
   id: string;
@@ -25,19 +28,30 @@ export interface MenuItem {
 export const getRestaurantById = async (
   restaurantId: string
 ): Promise<Restaurant> => {
-  const response = await api.get<Restaurant>(
-    `/restaurants/${restaurantId}`
+  return requestData(
+    () => api.get<Restaurant>(
+      `/restaurants/${restaurantId}`
+    ),
+    "Unable to load restaurant details."
   );
+};
 
-  return response.data;
+export const getMyRestaurant = async (): Promise<Restaurant> => {
+  return requestData(
+    () => api.get<Restaurant>(
+      "/restaurants/me"
+    ),
+    "Unable to load your restaurant details."
+  );
 };
 
 export const getRestaurantMenu = async (
   restaurantId: string
 ): Promise<MenuItem[]> => {
-  const response = await api.get<MenuItem[]>(
-    `/menu-items/restaurant/${restaurantId}`
+  return requestData(
+    () => api.get<MenuItem[]>(
+      `/menu-items/restaurant/${restaurantId}`
+    ),
+    "Unable to load the restaurant menu."
   );
-
-  return response.data;
 };

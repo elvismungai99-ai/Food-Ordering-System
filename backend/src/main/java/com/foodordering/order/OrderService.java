@@ -1,26 +1,33 @@
 package com.foodordering.order;
 
+import com.foodordering.cart.Cart;
+import com.foodordering.cart.CartItem;
+import com.foodordering.cart.CartRepository;
+
+import com.foodordering.common.exception.BusinessRuleException;
+import com.foodordering.common.exception.ResourceNotFoundException;
+
+import com.foodordering.menu.MenuItem;
+import com.foodordering.menu.MenuItemRepository;
+
+import com.foodordering.order.dto.OrderDto;
+import com.foodordering.order.dto.PlaceOrderRequest;
+
+import com.foodordering.payment.PaymentResult;
+import com.foodordering.payment.PaymentService;
+
+import com.foodordering.restaurant.Restaurant;
+import com.foodordering.restaurant.RestaurantRepository;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.foodordering.cart.Cart;
-import com.foodordering.cart.CartItem;
-import com.foodordering.cart.CartRepository;
-import com.foodordering.menu.MenuItem;
-import com.foodordering.menu.MenuItemRepository;
-import com.foodordering.order.dto.OrderDto;
-import com.foodordering.order.dto.PlaceOrderRequest;
-import com.foodordering.payment.PaymentResult;
-import com.foodordering.payment.PaymentService;
-import com.foodordering.restaurant.Restaurant;
-import com.foodordering.restaurant.RestaurantRepository;
 
 @Service
 public class OrderService {
@@ -40,12 +47,23 @@ public class OrderService {
             PaymentService paymentService,
             OrderStateMachine orderStateMachine
     ) {
-        this.orderRepository = orderRepository;
-        this.cartRepository = cartRepository;
-        this.menuItemRepository = menuItemRepository;
-        this.restaurantRepository = restaurantRepository;
-        this.paymentService = paymentService;
-        this.orderStateMachine = orderStateMachine;
+        this.orderRepository =
+                orderRepository;
+
+        this.cartRepository =
+                cartRepository;
+
+        this.menuItemRepository =
+                menuItemRepository;
+
+        this.restaurantRepository =
+                restaurantRepository;
+
+        this.paymentService =
+                paymentService;
+
+        this.orderStateMachine =
+                orderStateMachine;
     }
 
     // =========================================================
@@ -59,60 +77,89 @@ public class OrderService {
     ) {
 
         if (customerId == null) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "Customer ID is required"
             );
         }
 
-        validatePlaceOrderRequest(request);
+        /*
+         * @Valid should already reject an empty address,
+         * but this keeps the service protected when called
+         * from somewhere other than the controller.
+         */
+        if (
+                request == null
+                || request.getDeliveryAddress() == null
+                || request
+                        .getDeliveryAddress()
+                        .isBlank()
+        ) {
+            throw new BusinessRuleException(
+                    "Delivery address is required"
+            );
+        }
 
-        // Load customer's cart.
-        Cart cart = cartRepository
-                .findWithItemsByCustomerId(customerId)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Cart not found"
+        Cart cart =
+                cartRepository
+                        .findWithItemsByCustomerId(
+                                customerId
                         )
-                );
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Cart not found"
+                                )
+                        );
 
-        // Cart must contain at least one item.
         if (
                 cart.getItems() == null
                 || cart.getItems().isEmpty()
         ) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "Your cart is empty"
             );
         }
 
-        // Load current menu items.
         List<MenuItem> menuItems =
                 new ArrayList<>();
 
-        for (CartItem cartItem : cart.getItems()) {
+        /*
+         * Verify that every item still exists
+         * and is still available.
+         */
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
 
             MenuItem menuItem =
                     menuItemRepository
                             .findById(
-                                    cartItem.getMenuItemId()
+                                    cartItem
+                                            .getMenuItemId()
                             )
                             .orElseThrow(() ->
-                                    new RuntimeException(
+                                    new ResourceNotFoundException(
                                             "A menu item in your cart no longer exists"
                                     )
                             );
 
             if (!menuItem.isAvailable()) {
-                throw new RuntimeException(
+
+                throw new BusinessRuleException(
                         menuItem.getName()
                         + " is no longer available"
                 );
             }
 
-            menuItems.add(menuItem);
+            menuItems.add(
+                    menuItem
+            );
         }
 
-        // All items must belong to one restaurant.
+        /*
+         * Your current cart supports one
+         * restaurant at a time.
+         */
         Set<UUID> restaurantIds =
                 menuItems
                         .stream()
@@ -123,8 +170,10 @@ public class OrderService {
                                 Collectors.toSet()
                         );
 
-        if (restaurantIds.size() != 1) {
-            throw new RuntimeException(
+        if (
+                restaurantIds.size() != 1
+        ) {
+            throw new BusinessRuleException(
                     "All items in the cart must belong to the same restaurant"
             );
         }
@@ -136,24 +185,32 @@ public class OrderService {
 
         Restaurant restaurant =
                 restaurantRepository
-                        .findById(restaurantId)
+                        .findById(
+                                restaurantId
+                        )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Restaurant not found"
                                 )
                         );
 
-        // Make sure the customer has accepted
-        // the latest menu prices.
+        /*
+         * Protect against restaurant price changes.
+         */
         validateCartPrices(
                 cart,
                 menuItems
         );
 
         BigDecimal orderTotal =
-                calculateOrderTotal(cart);
+                calculateOrderTotal(
+                        cart
+                );
 
-        // Simulated payment.
+        /*
+         * Keep your current payment simulation.
+         * M-PESA will replace this later.
+         */
         PaymentResult paymentResult =
                 paymentService
                         .processPayment(
@@ -163,21 +220,22 @@ public class OrderService {
 
         if (
                 paymentResult == null
-                || !paymentResult.isSuccessful()
+                || !paymentResult
+                        .isSuccessful()
         ) {
 
-            String paymentMessage =
+            String message =
                     paymentResult != null
-                            ? paymentResult.getMessage()
+                            ? paymentResult
+                                    .getMessage()
                             : "Unknown payment error";
 
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "Payment failed: "
-                    + paymentMessage
+                    + message
             );
         }
 
-        // Create order.
         Order order =
                 new Order();
 
@@ -200,10 +258,7 @@ public class OrderService {
         );
 
         /*
-         * Every newly placed order starts here.
-         *
-         * Future status changes must go through
-         * OrderStateMachine.
+         * New orders begin at PENDING.
          */
         order.setStatus(
                 OrderStatus.PENDING
@@ -214,20 +269,27 @@ public class OrderService {
         );
 
         order.setPaymentReference(
-                paymentResult.getReference()
+                paymentResult
+                        .getReference()
         );
 
         order.setTotalAmount(
                 orderTotal
         );
 
-        // Create permanent OrderItem snapshots.
-        for (CartItem cartItem : cart.getItems()) {
+        /*
+         * Create permanent order-item snapshots.
+         */
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
 
             MenuItem menuItem =
                     findMenuItem(
                             menuItems,
-                            cartItem.getMenuItemId()
+                            cartItem
+                                    .getMenuItemId()
                     );
 
             BigDecimal subtotal =
@@ -235,7 +297,8 @@ public class OrderService {
                             .getUnitPrice()
                             .multiply(
                                     BigDecimal.valueOf(
-                                            cartItem.getQuantity()
+                                            cartItem
+                                                    .getQuantity()
                                     )
                             );
 
@@ -262,7 +325,9 @@ public class OrderService {
                     cartItem.getQuantity()
             );
 
-            // Final accepted purchase price snapshot.
+            /*
+             * This is the accepted purchase-price snapshot.
+             */
             orderItem.setUnitPrice(
                     cartItem.getUnitPrice()
             );
@@ -276,14 +341,20 @@ public class OrderService {
             );
         }
 
-        // Cascade saves OrderItems.
         Order savedOrder =
-                orderRepository.save(order);
+                orderRepository.save(
+                        order
+                );
 
-        // Clear cart only after successful order creation/payment.
+        /*
+         * Cart is cleared only after
+         * successful order creation/payment.
+         */
         cart.clearItems();
 
-        cartRepository.save(cart);
+        cartRepository.save(
+                cart
+        );
 
         return new OrderDto(
                 savedOrder
@@ -301,39 +372,31 @@ public class OrderService {
     ) {
 
         if (orderId == null) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "Order ID is required"
             );
         }
 
         if (newStatus == null) {
-            throw new RuntimeException(
+            throw new BusinessRuleException(
                     "New order status is required"
             );
         }
 
         Order order =
                 orderRepository
-                        .findById(orderId)
+                        .findById(
+                                orderId
+                        )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Order not found"
                                 )
                         );
 
-        OrderStatus currentStatus =
-                order.getStatus();
-
-        /*
-         * Examples:
-         *
-         * PENDING -> CONFIRMED      allowed
-         * CONFIRMED -> PREPARING   allowed
-         * PENDING -> DELIVERED     rejected
-         */
         orderStateMachine
                 .validateTransition(
-                        currentStatus,
+                        order.getStatus(),
                         newStatus
                 );
 
@@ -342,7 +405,9 @@ public class OrderService {
         );
 
         Order savedOrder =
-                orderRepository.save(order);
+                orderRepository.save(
+                        order
+                );
 
         return new OrderDto(
                 savedOrder
@@ -350,7 +415,7 @@ public class OrderService {
     }
 
     // =========================================================
-    // GET CUSTOMER ORDERS
+    // CUSTOMER ORDERS
     // =========================================================
 
     @Transactional(readOnly = true)
@@ -368,7 +433,7 @@ public class OrderService {
     }
 
     // =========================================================
-    // GET ONE CUSTOMER ORDER
+    // ONE CUSTOMER ORDER
     // =========================================================
 
     @Transactional(readOnly = true)
@@ -384,7 +449,7 @@ public class OrderService {
                                 customerId
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
+                                new ResourceNotFoundException(
                                         "Order not found"
                                 )
                         );
@@ -395,7 +460,7 @@ public class OrderService {
     }
 
     // =========================================================
-    // GET RESTAURANT ORDERS
+    // RESTAURANT ORDERS
     // =========================================================
 
     @Transactional(readOnly = true)
@@ -403,9 +468,14 @@ public class OrderService {
             UUID restaurantId
     ) {
 
-        if (restaurantId == null) {
-            throw new RuntimeException(
-                    "Restaurant ID is required"
+        if (
+                !restaurantRepository
+                        .existsById(
+                                restaurantId
+                        )
+        ) {
+            throw new ResourceNotFoundException(
+                    "Restaurant not found"
             );
         }
 
@@ -419,33 +489,7 @@ public class OrderService {
     }
 
     // =========================================================
-    // VALIDATE PLACE ORDER REQUEST
-    // =========================================================
-
-    private void validatePlaceOrderRequest(
-            PlaceOrderRequest request
-    ) {
-
-        if (request == null) {
-            throw new RuntimeException(
-                    "Order request is required"
-            );
-        }
-
-        if (
-                request.getDeliveryAddress() == null
-                || request
-                        .getDeliveryAddress()
-                        .isBlank()
-        ) {
-            throw new RuntimeException(
-                    "Delivery address is required"
-            );
-        }
-    }
-
-    // =========================================================
-    // VALIDATE CART PRICES
+    // PRICE VALIDATION
     // =========================================================
 
     private void validateCartPrices(
@@ -453,19 +497,24 @@ public class OrderService {
             List<MenuItem> menuItems
     ) {
 
-        for (CartItem cartItem : cart.getItems()) {
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
 
             MenuItem menuItem =
                     findMenuItem(
                             menuItems,
-                            cartItem.getMenuItemId()
+                            cartItem
+                                    .getMenuItemId()
                     );
 
             if (
                     cartItem.getUnitPrice() == null
                     || menuItem.getPrice() == null
             ) {
-                throw new RuntimeException(
+
+                throw new BusinessRuleException(
                         "Unable to validate the price of "
                         + menuItem.getName()
                 );
@@ -475,10 +524,12 @@ public class OrderService {
                     cartItem
                             .getUnitPrice()
                             .compareTo(
-                                    menuItem.getPrice()
+                                    menuItem
+                                            .getPrice()
                             ) != 0
             ) {
-                throw new RuntimeException(
+
+                throw new BusinessRuleException(
                         "The price of "
                         + menuItem.getName()
                         + " changed from "
@@ -493,7 +544,7 @@ public class OrderService {
     }
 
     // =========================================================
-    // CALCULATE ORDER TOTAL
+    // TOTAL CALCULATION
     // =========================================================
 
     private BigDecimal calculateOrderTotal(
@@ -503,19 +554,28 @@ public class OrderService {
         BigDecimal total =
                 BigDecimal.ZERO;
 
-        for (CartItem cartItem : cart.getItems()) {
+        for (
+                CartItem cartItem :
+                cart.getItems()
+        ) {
 
             if (
                     cartItem.getQuantity() == null
-                    || cartItem.getQuantity() <= 0
+                    || cartItem
+                            .getQuantity() <= 0
             ) {
-                throw new RuntimeException(
+
+                throw new BusinessRuleException(
                         "Cart item quantity must be greater than zero"
                 );
             }
 
-            if (cartItem.getUnitPrice() == null) {
-                throw new RuntimeException(
+            if (
+                    cartItem.getUnitPrice()
+                    == null
+            ) {
+
+                throw new BusinessRuleException(
                         "Cart item price is missing"
                 );
             }
@@ -525,12 +585,15 @@ public class OrderService {
                             .getUnitPrice()
                             .multiply(
                                     BigDecimal.valueOf(
-                                            cartItem.getQuantity()
+                                            cartItem
+                                                    .getQuantity()
                                     )
                             );
 
             total =
-                    total.add(subtotal);
+                    total.add(
+                            subtotal
+                    );
         }
 
         return total;
@@ -551,11 +614,13 @@ public class OrderService {
                         menuItem ->
                                 menuItem
                                         .getId()
-                                        .equals(menuItemId)
+                                        .equals(
+                                                menuItemId
+                                        )
                 )
                 .findFirst()
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                                 "Menu item not found"
                         )
                 );

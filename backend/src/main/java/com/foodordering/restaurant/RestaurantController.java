@@ -3,20 +3,21 @@ package com.foodordering.restaurant;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.security.JwtUtil;
 
+import jakarta.validation.constraints.Size;
+
+@Validated
 @RestController
 @RequestMapping("/api/restaurants")
 public class RestaurantController {
@@ -28,142 +29,112 @@ public class RestaurantController {
             RestaurantService restaurantService,
             JwtUtil jwtUtil
     ) {
-        this.restaurantService = restaurantService;
-        this.jwtUtil = jwtUtil;
+        this.restaurantService =
+                restaurantService;
+        this.jwtUtil =
+                jwtUtil;
     }
 
-    // Public — get all restaurants, with optional search and category filtering.
     @GetMapping
-    public ResponseEntity<List<RestaurantDto>> getAllRestaurants(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String category
+    public ResponseEntity<List<RestaurantDto>>
+    searchRestaurants(
+
+            @RequestParam(
+                    defaultValue = ""
+            )
+            @Size(
+                    max = 100,
+                    message = "Search text must not exceed 100 characters"
+            )
+            String search,
+
+            @RequestParam(
+                    defaultValue = ""
+            )
+            @Size(
+                    max = 100,
+                    message = "Category must not exceed 100 characters"
+            )
+            String category
     ) {
-        List<RestaurantDto> restaurants;
 
-        boolean hasSearch =
-                search != null && !search.isBlank();
-
-        boolean hasCategory =
-                category != null && !category.isBlank();
-
-        if (hasSearch || hasCategory) {
-            restaurants = restaurantService.searchRestaurants(
-                    search,
-                    category
-            );
-        } else {
-            restaurants =
-                    restaurantService.getAllRestaurants();
-        }
-
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(
+                restaurantService
+                        .searchRestaurants(
+                                search,
+                                category
+                        )
+        );
     }
 
-    // Public — get all available restaurant categories.
-    @GetMapping("/categories")
-    public ResponseEntity<List<String>> getAllCategories() {
-        List<String> categories =
-                restaurantService.getAllCategories();
-
-        return ResponseEntity.ok(categories);
-    }
-
-    // Restaurant owner — get the restaurant owned by the logged-in account.
     @GetMapping("/me")
-    public ResponseEntity<?> getMyRestaurant(
-            @RequestHeader("Authorization") String authHeader
+    public ResponseEntity<RestaurantDto>
+    getMyRestaurant(
+            @RequestHeader(
+                    "Authorization"
+            )
+            String authHeader
     ) {
-        try {
-            UUID ownerId = extractUserId(authHeader);
 
-            RestaurantDto restaurant =
-                    restaurantService.getMyRestaurant(ownerId);
+        UUID ownerId =
+                extractUserId(
+                        authHeader
+                );
 
-            return ResponseEntity.ok(restaurant);
-
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                restaurantService.getMyRestaurant(
+                        ownerId
+                )
+        );
     }
 
-    // Public — get one restaurant by its ID.
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getRestaurantById(
-            @PathVariable UUID id
+    @GetMapping("/{restaurantId}")
+    public ResponseEntity<RestaurantDto>
+    getRestaurant(
+            @PathVariable
+            UUID restaurantId
     ) {
-        try {
-            RestaurantDto restaurant =
-                    restaurantService.getRestaurantById(id);
 
-            return ResponseEntity.ok(restaurant);
-
-        } catch (RuntimeException exception) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                restaurantService.getRestaurant(
+                        restaurantId
+                )
+        );
     }
 
-    // Restaurant owner — create a restaurant for the logged-in account.
-    @PostMapping
-    public ResponseEntity<?> createRestaurant(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody RestaurantDto dto
-    ) {
-        try {
-            UUID ownerId = extractUserId(authHeader);
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>>
+    getCategories() {
 
-            RestaurantDto createdRestaurant =
-                    restaurantService.createRestaurant(
-                            ownerId,
-                            dto
-                    );
-
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(createdRestaurant);
-
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
+        return ResponseEntity.ok(
+                restaurantService
+                        .getCategories()
+        );
     }
 
-    // Restaurant owner — update their own restaurant.
-    @PutMapping("/me")
-    public ResponseEntity<?> updateMyRestaurant(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody RestaurantDto dto
+    private UUID extractUserId(
+            String authHeader
     ) {
-        try {
-            UUID ownerId = extractUserId(authHeader);
 
-            RestaurantDto updatedRestaurant =
-                    restaurantService.updateMyRestaurant(
-                            ownerId,
-                            dto
-                    );
-
-            return ResponseEntity.ok(updatedRestaurant);
-
-        } catch (RuntimeException exception) {
-            return ResponseEntity.badRequest()
-                    .body(exception.getMessage());
-        }
-    }
-
-    private UUID extractUserId(String authHeader) {
         if (
                 authHeader == null
-                || !authHeader.startsWith("Bearer ")
+                || !authHeader.startsWith(
+                        "Bearer "
+                )
         ) {
-            throw new RuntimeException(
+            throw new ForbiddenOperationException(
                     "Authorization token is missing or invalid"
             );
         }
 
-        String token =
-                authHeader.substring(7);
-
-        return jwtUtil.extractUserId(token);
+        try {
+            return jwtUtil.extractUserId(
+                    authHeader.substring(7)
+            );
+        } catch (RuntimeException exception) {
+            throw new ForbiddenOperationException(
+                    "Authorization token is missing or invalid"
+            );
+        }
     }
 }

@@ -8,6 +8,9 @@ import {
 } from "react-router-dom";
 
 import api from "../../api/axios";
+import {
+  getApiErrorMessage,
+} from "../../utils/apiError";
 
 interface Restaurant {
   id: string;
@@ -101,7 +104,9 @@ function RestaurantDashboard() {
           );
 
           setError(
-            "Unable to load your restaurant details."
+            getApiErrorMessage(
+              requestError
+            )
           );
 
         } finally {
@@ -361,6 +366,33 @@ function RestaurantDashboard() {
 
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+
+            {/* RESTAURANT DETAILS */}
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/restaurant/details"
+                )
+              }
+              className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            >
+
+              <div className="text-3xl">
+                🏪
+              </div>
+
+              <h3 className="mt-4 text-lg font-semibold text-slate-950">
+                Restaurant Details
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                View the profile, address, opening hours and current status.
+              </p>
+
+            </button>
 
 
             {/* MENU */}
