@@ -33,6 +33,8 @@ export interface Order {
 
   restaurantName: string;
   deliveryAddress: string;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
 
   status: OrderStatus;
 
@@ -49,6 +51,8 @@ export interface Order {
 
 export interface PlaceOrderRequest {
   deliveryAddress: string;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
 }
 
 /*

@@ -16,6 +16,8 @@ public class OrderDto {
 
     private String restaurantName;
     private String deliveryAddress;
+    private BigDecimal deliveryLatitude;
+    private BigDecimal deliveryLongitude;
 
     private PaymentStatus paymentStatus;
     private String paymentReference;
@@ -42,6 +44,12 @@ public class OrderDto {
 
         this.deliveryAddress =
                 order.getDeliveryAddress();
+
+        this.deliveryLatitude =
+                order.getDeliveryLatitude();
+
+        this.deliveryLongitude =
+                order.getDeliveryLongitude();
 
         this.status = order.getStatus();
         this.totalAmount =
@@ -81,6 +89,14 @@ public class OrderDto {
 
     public String getDeliveryAddress() {
         return deliveryAddress;
+    }
+
+    public BigDecimal getDeliveryLatitude() {
+        return deliveryLatitude;
+    }
+
+    public BigDecimal getDeliveryLongitude() {
+        return deliveryLongitude;
     }
 
     public OrderStatus getStatus() {

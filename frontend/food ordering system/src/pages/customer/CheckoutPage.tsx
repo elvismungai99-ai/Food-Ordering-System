@@ -7,6 +7,10 @@ import { useNavigate } from "react-router-dom";
 
 import { useCart } from "../../context/CartContext";
 
+interface NominatimReverseResponse {
+  display_name?: string;
+}
+
 function CheckoutPage() {
   const navigate = useNavigate();
 
@@ -15,8 +19,124 @@ function CheckoutPage() {
   const [deliveryAddress, setDeliveryAddress] =
     useState("");
 
+  const [
+    deliveryLatitude,
+    setDeliveryLatitude,
+  ] = useState<number | null>(null);
+
+  const [
+    deliveryLongitude,
+    setDeliveryLongitude,
+  ] = useState<number | null>(null);
+
+  const [
+    locating,
+    setLocating,
+  ] = useState(false);
+
+  const [
+    locationMessage,
+    setLocationMessage,
+  ] = useState("");
+
   const [error, setError] =
     useState("");
+
+  const handleUseCurrentLocation =
+    async () => {
+      setError("");
+      setLocationMessage("");
+
+      if (!navigator.geolocation) {
+        setError(
+          "Your browser does not support live location."
+        );
+        return;
+      }
+
+      try {
+        setLocating(true);
+
+        const position =
+          await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                resolve,
+                reject,
+                {
+                  enableHighAccuracy: true,
+                  timeout: 15000,
+                  maximumAge: 0,
+                }
+              );
+            }
+          );
+
+        const latitude =
+          Number(
+            position.coords.latitude.toFixed(
+              6
+            )
+          );
+
+        const longitude =
+          Number(
+            position.coords.longitude.toFixed(
+              6
+            )
+          );
+
+        setDeliveryLatitude(latitude);
+        setDeliveryLongitude(longitude);
+
+        const response =
+          await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                Accept: "application/json",
+              },
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Unable to read this location address."
+          );
+        }
+
+        const location =
+          (await response.json()) as NominatimReverseResponse;
+
+        if (location.display_name) {
+          setDeliveryAddress(
+            location.display_name
+          );
+          setLocationMessage(
+            "Location detected. You can edit the address before continuing."
+          );
+        } else {
+          setLocationMessage(
+            "Coordinates detected. Please add delivery details before continuing."
+          );
+        }
+
+      } catch (locationError) {
+        console.error(
+          "Unable to get current location:",
+          locationError
+        );
+
+        setDeliveryLatitude(null);
+        setDeliveryLongitude(null);
+        setError(
+          "Unable to detect your current location. Allow location access or enter your address manually."
+        );
+
+      } finally {
+        setLocating(false);
+      }
+    };
 
   const handleContinueToPayment = (
     event: FormEvent<HTMLFormElement>
@@ -55,6 +175,27 @@ function CheckoutPage() {
       "checkoutDeliveryAddress",
       deliveryAddress.trim()
     );
+
+    if (
+      deliveryLatitude !== null
+      && deliveryLongitude !== null
+    ) {
+      sessionStorage.setItem(
+        "checkoutDeliveryLatitude",
+        String(deliveryLatitude)
+      );
+      sessionStorage.setItem(
+        "checkoutDeliveryLongitude",
+        String(deliveryLongitude)
+      );
+    } else {
+      sessionStorage.removeItem(
+        "checkoutDeliveryLatitude"
+      );
+      sessionStorage.removeItem(
+        "checkoutDeliveryLongitude"
+      );
+    }
 
     navigate("/customer/payment");
   };
@@ -114,6 +255,33 @@ function CheckoutPage() {
           <form
             onSubmit={handleContinueToPayment}
           >
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={locating}
+                onClick={handleUseCurrentLocation}
+                className="rounded-3xl border border-indigo-200 bg-indigo-50 px-5 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                {locating
+                  ? "Detecting location..."
+                  : "Use my current location"}
+              </button>
+
+              {deliveryLatitude !== null
+                && deliveryLongitude !== null && (
+                  <span className="text-sm text-slate-500">
+                    {deliveryLatitude},{" "}
+                    {deliveryLongitude}
+                  </span>
+                )}
+            </div>
+
+            {locationMessage && (
+              <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {locationMessage}
+              </div>
+            )}
+
             <label className="block">
 
               <span className="text-sm font-medium text-slate-700">

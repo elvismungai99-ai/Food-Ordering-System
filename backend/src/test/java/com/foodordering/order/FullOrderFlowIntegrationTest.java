@@ -135,13 +135,19 @@ class FullOrderFlowIntegrationTest {
                                                 json(
                                                         Map.of(
                                                                 "deliveryAddress",
-                                                                "Flow Street, Nairobi"
+                                                                "Flow Street, Nairobi",
+                                                                "deliveryLatitude",
+                                                                BigDecimal.valueOf(-1.286389),
+                                                                "deliveryLongitude",
+                                                                BigDecimal.valueOf(36.817223)
                                                         )
                                                 )
                                         )
                         )
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.status").value("PENDING"))
+                        .andExpect(jsonPath("$.deliveryLatitude").value(-1.286389))
+                        .andExpect(jsonPath("$.deliveryLongitude").value(36.817223))
                         .andExpect(jsonPath("$.items[0].quantity").value(2))
                         .andReturn();
 
@@ -220,8 +226,14 @@ class FullOrderFlowIntegrationTest {
         )
                 .isPresent()
                 .get()
-                .extracting(Order::getStatus)
-                .isEqualTo(OrderStatus.CONFIRMED);
+                .satisfies(order -> {
+                    assertThat(order.getStatus())
+                            .isEqualTo(OrderStatus.CONFIRMED);
+                    assertThat(order.getDeliveryLatitude())
+                            .isEqualByComparingTo("-1.286389");
+                    assertThat(order.getDeliveryLongitude())
+                            .isEqualByComparingTo("36.817223");
+                });
     }
 
     private AuthSession registerAndLogin(

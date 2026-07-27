@@ -46,6 +46,32 @@ function PaymentSimulationPage() {
       "checkoutDeliveryAddress"
     );
 
+  const storedDeliveryLatitude =
+    sessionStorage.getItem(
+      "checkoutDeliveryLatitude"
+    );
+
+  const storedDeliveryLongitude =
+    sessionStorage.getItem(
+      "checkoutDeliveryLongitude"
+    );
+
+  const deliveryLatitude =
+    storedDeliveryLatitude !== null
+      ? Number(storedDeliveryLatitude)
+      : null;
+
+  const deliveryLongitude =
+    storedDeliveryLongitude !== null
+      ? Number(storedDeliveryLongitude)
+      : null;
+
+  const hasDeliveryCoordinates =
+    deliveryLatitude !== null
+    && deliveryLongitude !== null
+    && Number.isFinite(deliveryLatitude)
+    && Number.isFinite(deliveryLongitude);
+
   useEffect(() => {
     if (!deliveryAddress) {
       navigate(
@@ -71,6 +97,14 @@ function PaymentSimulationPage() {
         const order =
           await placeOrder({
             deliveryAddress,
+            deliveryLatitude:
+              hasDeliveryCoordinates
+                ? deliveryLatitude
+                : null,
+            deliveryLongitude:
+              hasDeliveryCoordinates
+                ? deliveryLongitude
+                : null,
           });
 
         setCompletedOrder(
@@ -81,6 +115,12 @@ function PaymentSimulationPage() {
 
         sessionStorage.removeItem(
           "checkoutDeliveryAddress"
+        );
+        sessionStorage.removeItem(
+          "checkoutDeliveryLatitude"
+        );
+        sessionStorage.removeItem(
+          "checkoutDeliveryLongitude"
         );
 
       } catch (requestError) {
@@ -225,6 +265,17 @@ function PaymentSimulationPage() {
             <p className="mt-1 font-medium text-slate-900">
               {deliveryAddress}
             </p>
+
+            {hasDeliveryCoordinates && (
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${deliveryLatitude}&mlon=${deliveryLongitude}#map=18/${deliveryLatitude}/${deliveryLongitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Open map
+              </a>
+            )}
 
           </div>
 

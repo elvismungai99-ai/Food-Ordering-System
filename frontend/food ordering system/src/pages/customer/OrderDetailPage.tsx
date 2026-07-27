@@ -191,6 +191,12 @@ function OrderDetailPage() {
     );
   }
 
+  const mapUrl =
+    order.deliveryLatitude != null
+    && order.deliveryLongitude != null
+      ? `https://www.openstreetmap.org/?mlat=${order.deliveryLatitude}&mlon=${order.deliveryLongitude}#map=18/${order.deliveryLatitude}/${order.deliveryLongitude}`
+      : null;
+
   return (
     <main className="min-h-screen bg-slate-100 p-6 md:p-8">
 
@@ -324,6 +330,17 @@ function OrderDetailPage() {
                 order.deliveryAddress
               }
             </p>
+
+            {mapUrl && (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                Open map
+              </a>
+            )}
 
           </div>
 

@@ -32,6 +32,20 @@ public class Order {
     )
     private String deliveryAddress;
 
+    @Column(
+            name = "delivery_latitude",
+            precision = 9,
+            scale = 6
+    )
+    private BigDecimal deliveryLatitude;
+
+    @Column(
+            name = "delivery_longitude",
+            precision = 10,
+            scale = 6
+    )
+    private BigDecimal deliveryLongitude;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private OrderStatus status;
@@ -201,6 +215,30 @@ public class Order {
     ) {
         this.deliveryAddress =
                 deliveryAddress;
+    }
+
+
+    public BigDecimal getDeliveryLatitude() {
+        return deliveryLatitude;
+    }
+
+    public void setDeliveryLatitude(
+            BigDecimal deliveryLatitude
+    ) {
+        this.deliveryLatitude =
+                deliveryLatitude;
+    }
+
+
+    public BigDecimal getDeliveryLongitude() {
+        return deliveryLongitude;
+    }
+
+    public void setDeliveryLongitude(
+            BigDecimal deliveryLongitude
+    ) {
+        this.deliveryLongitude =
+                deliveryLongitude;
     }
 
 

@@ -233,6 +233,19 @@ function RestaurantOrdersPage() {
     );
   };
 
+  const getMapUrl = (
+    order: Order
+  ) => {
+    if (
+      order.deliveryLatitude == null
+      || order.deliveryLongitude == null
+    ) {
+      return null;
+    }
+
+    return `https://www.openstreetmap.org/?mlat=${order.deliveryLatitude}&mlon=${order.deliveryLongitude}#map=18/${order.deliveryLatitude}/${order.deliveryLongitude}`;
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -301,6 +314,9 @@ function RestaurantOrdersPage() {
                     order.status
                   );
 
+                const mapUrl =
+                  getMapUrl(order);
+
                 return (
                   <article
                     key={order.id}
@@ -365,6 +381,17 @@ function RestaurantOrdersPage() {
                             order.deliveryAddress
                           }
                         </p>
+
+                        {mapUrl && (
+                          <a
+                            href={mapUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                          >
+                            Open map
+                          </a>
+                        )}
                       </div>
 
                       <div>

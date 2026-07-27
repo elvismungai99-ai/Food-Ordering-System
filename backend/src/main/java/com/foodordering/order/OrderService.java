@@ -99,6 +99,15 @@ public class OrderService {
             );
         }
 
+        if (
+                (request.getDeliveryLatitude() == null)
+                != (request.getDeliveryLongitude() == null)
+        ) {
+            throw new BusinessRuleException(
+                    "Both delivery latitude and longitude are required when using current location"
+            );
+        }
+
         Cart cart =
                 cartRepository
                         .findWithItemsByCustomerId(
@@ -255,6 +264,14 @@ public class OrderService {
                 request
                         .getDeliveryAddress()
                         .trim()
+        );
+
+        order.setDeliveryLatitude(
+                request.getDeliveryLatitude()
+        );
+
+        order.setDeliveryLongitude(
+                request.getDeliveryLongitude()
         );
 
         /*
