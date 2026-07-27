@@ -23,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.foodordering.security.ratelimit.LoginRateLimitFilter;
 
@@ -256,6 +257,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/menu-items",
                                 "/api/menu-items/**"
                         )
                         .hasAnyAuthority(
@@ -265,6 +267,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PUT,
+                                "/api/menu-items",
                                 "/api/menu-items/**"
                         )
                         .hasAnyAuthority(
@@ -274,6 +277,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.DELETE,
+                                "/api/menu-items",
                                 "/api/menu-items/**"
                         )
                         .hasAnyAuthority(
@@ -323,7 +327,7 @@ public class SecurityConfig {
 
                 .addFilterBefore(
                         jwtAuthenticationFilter,
-                        AuthorizationFilter.class
+                        UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();

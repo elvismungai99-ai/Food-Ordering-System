@@ -49,12 +49,12 @@ public class MenuItemDto {
     private boolean available;
 
     @Size(
-            max = 2000,
-            message = "Image URL must not exceed 2000 characters"
+            max = 1000000,
+            message = "Uploaded image is too large"
     )
     @Pattern(
-            regexp = "^$|^https?://.+",
-            message = "Image URL must begin with http:// or https://"
+            regexp = "^$|^https?://.+|^data:image/(jpeg|png|webp);base64,.+",
+            message = "Image must be a URL or uploaded JPEG, PNG or WebP image"
     )
     private String imageUrl;
 

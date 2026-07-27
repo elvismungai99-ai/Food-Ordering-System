@@ -237,9 +237,12 @@ public class MenuItemService {
         if (
                 !normalized.startsWith("https://")
                 && !normalized.startsWith("http://")
+                && !normalized.startsWith("data:image/jpeg;base64,")
+                && !normalized.startsWith("data:image/png;base64,")
+                && !normalized.startsWith("data:image/webp;base64,")
         ) {
             throw new RuntimeException(
-                    "Image URL must start with http:// or https://"
+                    "Image must be a URL or uploaded JPEG, PNG or WebP image"
             );
         }
 
