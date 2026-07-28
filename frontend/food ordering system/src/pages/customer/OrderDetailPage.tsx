@@ -14,6 +14,10 @@ import {
   type OrderStatus,
 } from "../../services/OrderService";
 
+import {
+  buildOpenRouteServiceMapUrl,
+} from "../../utils/location";
+
 function OrderDetailPage() {
   const navigate =
     useNavigate();
@@ -194,7 +198,10 @@ function OrderDetailPage() {
   const mapUrl =
     order.deliveryLatitude != null
     && order.deliveryLongitude != null
-      ? `https://www.openstreetmap.org/?mlat=${order.deliveryLatitude}&mlon=${order.deliveryLongitude}#map=18/${order.deliveryLatitude}/${order.deliveryLongitude}`
+      ? buildOpenRouteServiceMapUrl(
+          order.deliveryLatitude,
+          order.deliveryLongitude
+        )
       : null;
 
   return (

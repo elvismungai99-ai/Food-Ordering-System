@@ -28,6 +28,10 @@ app:
   mail:
     from: no-reply@foodordering.local
 
+openrouteservice:
+  base-url: https://api.openrouteservice.org
+  api-key: ${ORS_API_KEY:}
+
 security:
   rate-limit:
     ignore-localhost: false

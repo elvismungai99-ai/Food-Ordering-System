@@ -18,6 +18,10 @@ import {
   useCart,
 } from "../../context/CartContext";
 
+import {
+  buildOpenRouteServiceMapUrl,
+} from "../../utils/location";
+
 function PaymentSimulationPage() {
   const navigate = useNavigate();
 
@@ -268,7 +272,10 @@ function PaymentSimulationPage() {
 
             {hasDeliveryCoordinates && (
               <a
-                href={`https://www.openstreetmap.org/?mlat=${deliveryLatitude}&mlon=${deliveryLongitude}#map=18/${deliveryLatitude}/${deliveryLongitude}`}
+                href={buildOpenRouteServiceMapUrl(
+                  deliveryLatitude,
+                  deliveryLongitude
+                )}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-3 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"

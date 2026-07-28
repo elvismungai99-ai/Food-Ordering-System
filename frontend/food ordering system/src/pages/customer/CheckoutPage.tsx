@@ -6,9 +6,13 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { useCart } from "../../context/CartContext";
+import api from "../../api/axios";
+import {
+  getApiErrorMessage,
+} from "../../utils/apiError";
 
-interface NominatimReverseResponse {
-  display_name?: string;
+interface ReverseGeocodeResponse {
+  displayName?: string;
 }
 
 function CheckoutPage() {
@@ -89,35 +93,41 @@ function CheckoutPage() {
         setDeliveryLatitude(latitude);
         setDeliveryLongitude(longitude);
 
-        const response =
-          await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`,
-            {
-              headers: {
-                Accept: "application/json",
-              },
-            }
+        try {
+          const response =
+            await api.get<ReverseGeocodeResponse>(
+              "/location/reverse",
+              {
+                params: {
+                  lat: latitude,
+                  lon: longitude,
+                },
+              }
+            );
+
+          const location =
+            response.data;
+
+          if (location.displayName) {
+            setDeliveryAddress(
+              location.displayName
+            );
+            setLocationMessage(
+              "Location detected. You can edit the address before continuing."
+            );
+          } else {
+            setLocationMessage(
+              "Coordinates detected. Please add delivery details before continuing."
+            );
+          }
+        } catch (addressError) {
+          console.error(
+            "Unable to read current location address:",
+            addressError
           );
 
-        if (!response.ok) {
-          throw new Error(
-            "Unable to read this location address."
-          );
-        }
-
-        const location =
-          (await response.json()) as NominatimReverseResponse;
-
-        if (location.display_name) {
-          setDeliveryAddress(
-            location.display_name
-          );
           setLocationMessage(
-            "Location detected. You can edit the address before continuing."
-          );
-        } else {
-          setLocationMessage(
-            "Coordinates detected. Please add delivery details before continuing."
+            getApiErrorMessage(addressError)
           );
         }
 

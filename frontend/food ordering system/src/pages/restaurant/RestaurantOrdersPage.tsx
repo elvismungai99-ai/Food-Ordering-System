@@ -21,6 +21,10 @@ import {
   getMyRestaurant,
 } from "../../services/RestaurantService";
 
+import {
+  buildOpenRouteServiceMapUrl,
+} from "../../utils/location";
+
 function RestaurantOrdersPage() {
   const navigate = useNavigate();
 
@@ -243,7 +247,10 @@ function RestaurantOrdersPage() {
       return null;
     }
 
-    return `https://www.openstreetmap.org/?mlat=${order.deliveryLatitude}&mlon=${order.deliveryLongitude}#map=18/${order.deliveryLatitude}/${order.deliveryLongitude}`;
+    return buildOpenRouteServiceMapUrl(
+      order.deliveryLatitude,
+      order.deliveryLongitude
+    );
   };
 
   if (loading) {

@@ -308,6 +308,16 @@ public class SecurityConfig {
                         )
 
                         // =================================
+                        // LIVE DELIVERY LOCATION
+                        // =================================
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/location/reverse"
+                        )
+                        .permitAll()
+
+                        // =================================
                         // EVERYTHING ELSE
                         // =================================
 
