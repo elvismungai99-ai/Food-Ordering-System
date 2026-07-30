@@ -21,6 +21,9 @@ interface Restaurant {
   closingTime?: string | null;
   status?: string | null;
   category?: string | null;
+  openNow?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 function RestaurantPage() {
@@ -283,9 +286,9 @@ function RestaurantPage() {
               {restaurants.map(
                 (restaurant) => {
                   const status =
-                    normalizeStatus(
-                      restaurant.status
-                    );
+                    restaurant.openNow
+                      ? "OPEN"
+                      : "CLOSED";
 
                   return (
                     <article
@@ -336,6 +339,17 @@ function RestaurantPage() {
                           {restaurant.category}
                         </p>
                       )}
+
+                      {restaurant.reviewCount
+                        ? (
+                          <p className="mb-3 text-xs font-medium text-slate-500">
+                            Rating: {Number(
+                              restaurant.averageRating
+                              ?? 0
+                            ).toFixed(1)} / 5 ({restaurant.reviewCount})
+                          </p>
+                        )
+                        : null}
 
                       <p className="mb-4 line-clamp-2 min-h-10 text-sm text-slate-500">
                         {restaurant.description ||

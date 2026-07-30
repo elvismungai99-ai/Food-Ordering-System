@@ -1,4 +1,5 @@
 import {
+  type FormEvent,
   useEffect,
   useState,
 } from "react";
@@ -8,8 +9,10 @@ import {
 } from "react-router-dom";
 
 import {
+  createRestaurant,
   getMyRestaurant,
   type Restaurant,
+  type RestaurantRequest,
 } from "../../services/RestaurantService";
 
 import {
@@ -36,6 +39,28 @@ function RestaurantProfilePage() {
     error,
     setError,
   ] = useState("");
+
+  const [
+    formError,
+    setFormError,
+  ] = useState("");
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false);
+
+  const [
+    formData,
+    setFormData,
+  ] = useState<RestaurantRequest>({
+    name: "",
+    description: "",
+    address: "",
+    openingTime: "08:00",
+    closingTime: "22:00",
+    category: "Meals",
+  });
 
   useEffect(() => {
     const loadRestaurant = async () => {
@@ -72,6 +97,53 @@ function RestaurantProfilePage() {
 
     loadRestaurant();
   }, []);
+
+  const handleFormChange = (
+    field: keyof RestaurantRequest,
+    value: string
+  ) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleCreateRestaurant = async (
+    event: FormEvent
+  ) => {
+    event.preventDefault();
+
+    try {
+      setSaving(true);
+      setFormError("");
+
+      const createdRestaurant =
+        await createRestaurant(formData);
+
+      setRestaurant(createdRestaurant);
+      setError("");
+
+      if (createdRestaurant.id) {
+        localStorage.setItem(
+          "restaurantId",
+          createdRestaurant.id
+        );
+      }
+    } catch (requestError) {
+      console.error(
+        "Failed to submit restaurant:",
+        requestError
+      );
+
+      setFormError(
+        getApiErrorMessage(
+          requestError
+        )
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -116,12 +188,139 @@ function RestaurantProfilePage() {
           </div>
         )}
 
-        {!error && !restaurant && (
-          <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center">
-            <p className="text-slate-500">
-              No restaurant profile was found for this owner account.
-            </p>
-          </div>
+        {!restaurant && (
+          <section className="mt-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-950">
+                Submit Restaurant For Approval
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                New restaurants are sent to the super admin before customers can see or order from them.
+              </p>
+            </div>
+
+            {formError && (
+              <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {formError}
+              </div>
+            )}
+
+            <form
+              onSubmit={handleCreateRestaurant}
+              className="grid gap-5 md:grid-cols-2"
+            >
+              <label className="text-sm font-medium text-slate-700">
+                Restaurant Name
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "name",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Category
+                <select
+                  value={formData.category}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "category",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                >
+                  <option value="Meals">Meals</option>
+                  <option value="Drinks">Drinks</option>
+                  <option value="Dessert">Dessert</option>
+                </select>
+              </label>
+
+              <label className="text-sm font-medium text-slate-700 md:col-span-2">
+                Address
+                <input
+                  type="text"
+                  required
+                  value={formData.address}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "address",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Opening Time
+                <input
+                  type="time"
+                  required
+                  value={formData.openingTime}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "openingTime",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Closing Time
+                <input
+                  type="time"
+                  required
+                  value={formData.closingTime}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "closingTime",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700 md:col-span-2">
+                Description
+                <textarea
+                  value={formData.description}
+                  onChange={(event) =>
+                    handleFormChange(
+                      "description",
+                      event.target.value
+                    )
+                  }
+                  className="mt-2 min-h-28 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-orange-500"
+                />
+              </label>
+
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-3xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-orange-300"
+                >
+                  {
+                    saving
+                      ? "Submitting..."
+                      : "Submit For Approval"
+                  }
+                </button>
+              </div>
+            </form>
+          </section>
         )}
 
         {restaurant && (
@@ -143,8 +342,10 @@ function RestaurantProfilePage() {
               <span
                 className={
                   `rounded-full px-4 py-2 text-sm font-semibold ${
-                    restaurant.status === "OPEN"
+                    restaurant.status === "APPROVED"
                       ? "bg-green-100 text-green-700"
+                      : restaurant.status === "PENDING_APPROVAL"
+                        ? "bg-amber-100 text-amber-700"
                       : "bg-slate-100 text-slate-600"
                   }`
                 }

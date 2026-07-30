@@ -91,6 +91,7 @@ public interface RestaurantRepository
                         )
                     ) = LOWER(:category)
                 )
+                AND r.status = com.foodordering.restaurant.RestaurantStatus.APPROVED
             ORDER BY r.name ASC
             """)
     List<Restaurant> searchRestaurants(
@@ -110,7 +111,12 @@ public interface RestaurantRepository
             FROM Restaurant r
             WHERE r.category IS NOT NULL
               AND TRIM(r.category) <> ''
+              AND r.status = com.foodordering.restaurant.RestaurantStatus.APPROVED
             ORDER BY r.category ASC
             """)
     List<String> findDistinctCategories();
+
+    List<Restaurant> findByStatusOrderByCreatedAtAsc(
+            RestaurantStatus status
+    );
 }

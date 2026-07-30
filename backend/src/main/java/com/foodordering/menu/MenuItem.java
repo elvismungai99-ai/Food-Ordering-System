@@ -2,11 +2,15 @@ package com.foodordering.menu;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import com.foodordering.restaurant.Restaurant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -45,6 +49,14 @@ public class MenuItem {
 
     @Column
     private String category;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "menu_item_add_ons",
+            joinColumns = @JoinColumn(name = "menu_item_id")
+    )
+    @Column(name = "add_on", nullable = false)
+    private List<String> addOns = new ArrayList<>();
 
     @Column(nullable = false)
     private boolean available = true;
@@ -163,6 +175,18 @@ public class MenuItem {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public List<String> getAddOns() {
+        return addOns;
+    }
+
+    public void setAddOns(List<String> addOns) {
+        this.addOns.clear();
+
+        if (addOns != null) {
+            this.addOns.addAll(addOns);
+        }
     }
 
     // =====================================================

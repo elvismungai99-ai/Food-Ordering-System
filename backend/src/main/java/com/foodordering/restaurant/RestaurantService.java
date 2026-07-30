@@ -3,10 +3,12 @@ package com.foodordering.restaurant;
 import com.foodordering.common.exception.BusinessRuleException;
 import com.foodordering.common.exception.ConflictException;
 import com.foodordering.common.exception.ResourceNotFoundException;
+import com.foodordering.review.ReviewRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,12 +16,16 @@ import java.util.UUID;
 public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
+    private final ReviewRepository reviewRepository;
 
     public RestaurantService(
-            RestaurantRepository restaurantRepository
+            RestaurantRepository restaurantRepository,
+            ReviewRepository reviewRepository
     ) {
         this.restaurantRepository =
                 restaurantRepository;
+        this.reviewRepository =
+                reviewRepository;
     }
 
     @Transactional
@@ -79,7 +85,7 @@ public class RestaurantService {
         );
 
         restaurant.setStatus(
-                dto.getStatus()
+                RestaurantStatus.PENDING_APPROVAL
         );
 
         restaurant.setCategory(
@@ -93,9 +99,7 @@ public class RestaurantService {
                         restaurant
                 );
 
-        return new RestaurantDto(
-                saved
-        );
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -112,9 +116,7 @@ public class RestaurantService {
                                 )
                         );
 
-        return new RestaurantDto(
-                restaurant
-        );
+        return toDto(restaurant);
     }
 
     @Transactional(readOnly = true)
@@ -131,9 +133,13 @@ public class RestaurantService {
                                 )
                         );
 
-        return new RestaurantDto(
-                restaurant
-        );
+        if (restaurant.getStatus() != RestaurantStatus.APPROVED) {
+            throw new ResourceNotFoundException(
+                    "Restaurant not found"
+            );
+        }
+
+        return toDto(restaurant);
     }
 
     @Transactional(readOnly = true)
@@ -154,7 +160,7 @@ public class RestaurantService {
                         safeCategory
                 )
                 .stream()
-                .map(RestaurantDto::new)
+                .map(this::toDto)
                 .toList();
     }
 
@@ -163,6 +169,120 @@ public class RestaurantService {
 
         return restaurantRepository
                 .findDistinctCategories();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RestaurantDto> getRestaurantsByStatus(
+            RestaurantStatus status
+    ) {
+
+        return restaurantRepository
+                .findByStatusOrderByCreatedAtAsc(status)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public RestaurantDto updateApprovalStatus(
+            UUID restaurantId,
+            RestaurantStatus status
+    ) {
+
+        if (status == null) {
+            throw new BusinessRuleException(
+                    "Restaurant status is required"
+            );
+        }
+
+        Restaurant restaurant =
+                restaurantRepository
+                        .findById(restaurantId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Restaurant not found"
+                                )
+                        );
+
+        restaurant.setStatus(status);
+
+        return toDto(
+                restaurantRepository.save(restaurant)
+        );
+    }
+
+    public boolean isApprovedAndOpen(
+            Restaurant restaurant
+    ) {
+
+        return restaurant != null
+                && restaurant.getStatus()
+                == RestaurantStatus.APPROVED
+                && isWithinOpeningHours(restaurant);
+    }
+
+    public boolean isWithinOpeningHours(
+            Restaurant restaurant
+    ) {
+
+        if (
+                restaurant == null
+                || restaurant.getOpeningTime() == null
+                || restaurant.getClosingTime() == null
+        ) {
+            return false;
+        }
+
+        LocalTime now =
+                LocalTime.now();
+
+        LocalTime openingTime =
+                restaurant.getOpeningTime();
+
+        LocalTime closingTime =
+                restaurant.getClosingTime();
+
+        if (openingTime.equals(closingTime)) {
+            return false;
+        }
+
+        if (openingTime.isBefore(closingTime)) {
+            return !now.isBefore(openingTime)
+                    && now.isBefore(closingTime);
+        }
+
+        return !now.isBefore(openingTime)
+                || now.isBefore(closingTime);
+    }
+
+    private RestaurantDto toDto(
+            Restaurant restaurant
+    ) {
+
+        RestaurantDto dto =
+                new RestaurantDto(restaurant);
+
+        dto.setOpenNow(
+                restaurant.getStatus()
+                == RestaurantStatus.APPROVED
+                && isWithinOpeningHours(restaurant)
+        );
+
+        dto.setAverageRating(
+                reviewRepository
+                        .getAverageRestaurantRating(
+                                restaurant.getId()
+                        )
+        );
+
+        dto.setReviewCount(
+                reviewRepository
+                        .countByRestaurantIdAndMenuItemIdIsNull(
+                                restaurant.getId()
+                        )
+        );
+
+        return dto;
     }
 
     private void validateRestaurantTimes(

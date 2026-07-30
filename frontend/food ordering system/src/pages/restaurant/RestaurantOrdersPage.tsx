@@ -12,6 +12,7 @@ import axios from "axios";
 
 import {
   getRestaurantOrders,
+  cancelRestaurantOrder,
   updateOrderStatus,
   type Order,
   type OrderStatus,
@@ -24,6 +25,52 @@ import {
 import {
   buildOpenRouteServiceMapUrl,
 } from "../../utils/location";
+
+import {
+  createAutomaticDeliveryRequest,
+  createDeliveryRequest,
+  getAvailableRiders,
+  getRestaurantDeliveryRequests,
+  type DeliveryRequest,
+  type Rider,
+} from "../../services/RiderService";
+
+const activeDeliveryStatuses = new Set([
+  "REQUESTED",
+  "ACCEPTED",
+  "ARRIVED_AT_RESTAURANT",
+  "PICKED_UP",
+]);
+
+const getCurrentRestaurantPosition = () =>
+  new Promise<GeolocationPosition>(
+    (resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(
+          new Error(
+            "Location sharing is not supported by this browser."
+          )
+        );
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        () => {
+          reject(
+            new Error(
+              "Allow location access so the restaurant location can be shared with the rider."
+            )
+          );
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        }
+      );
+    }
+  );
 
 function RestaurantOrdersPage() {
   const navigate = useNavigate();
@@ -41,6 +88,26 @@ function RestaurantOrdersPage() {
     updatingOrderId,
     setUpdatingOrderId,
   ] = useState<string | null>(null);
+
+  const [
+    availableRiders,
+    setAvailableRiders,
+  ] = useState<Rider[]>([]);
+
+  const [
+    selectedRiders,
+    setSelectedRiders,
+  ] = useState<Record<string, string>>({});
+
+  const [
+    dispatchingOrderId,
+    setDispatchingOrderId,
+  ] = useState<string | null>(null);
+
+  const [
+    deliveryRequests,
+    setDeliveryRequests,
+  ] = useState<DeliveryRequest[]>([]);
 
   const loadOrders =
     useCallback(async () => {
@@ -71,7 +138,15 @@ function RestaurantOrdersPage() {
             restaurantId
           );
 
+        const riders =
+          await getAvailableRiders();
+
+        const requests =
+          await getRestaurantDeliveryRequests();
+
         setOrders(data);
+        setAvailableRiders(riders);
+        setDeliveryRequests(requests);
 
       } catch (requestError) {
         console.error(
@@ -216,6 +291,180 @@ function RestaurantOrdersPage() {
       }
     };
 
+  const handleDispatchRider =
+    async (
+      order: Order
+    ) => {
+      const riderId =
+        selectedRiders[order.id];
+
+      if (!riderId) {
+        setError(
+          "Select an available rider before sending the delivery request."
+        );
+        return;
+      }
+
+      const estimatedPayout =
+        window.prompt(
+          "Enter estimated payout, or leave blank to calculate automatically"
+        );
+
+      try {
+        setDispatchingOrderId(order.id);
+        setError("");
+
+        const position =
+          await getCurrentRestaurantPosition();
+
+        const deliveryRequest =
+          await createDeliveryRequest({
+            orderId: order.id,
+            riderId,
+            restaurantLatitude:
+              position.coords.latitude,
+            restaurantLongitude:
+              position.coords.longitude,
+            estimatedPayout:
+              estimatedPayout?.trim()
+                ? Number(estimatedPayout)
+                : null,
+          });
+
+        setDeliveryRequests(currentRequests => [
+          deliveryRequest,
+          ...currentRequests.filter(
+            currentRequest =>
+              currentRequest.id
+              !== deliveryRequest.id
+          ),
+        ]);
+
+        setError("");
+      } catch (requestError) {
+        console.error(
+          "Failed to send delivery request:",
+          requestError
+        );
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to send delivery request."
+        );
+      } finally {
+        setDispatchingOrderId(null);
+      }
+    };
+
+  const handleAutoDispatchRider =
+    async (
+      order: Order
+    ) => {
+      const estimatedPayout =
+        window.prompt(
+          "Enter estimated payout, or leave blank to calculate automatically"
+        );
+
+      try {
+        setDispatchingOrderId(order.id);
+        setError("");
+
+        const position =
+          await getCurrentRestaurantPosition();
+
+        const deliveryRequest =
+          await createAutomaticDeliveryRequest({
+            orderId: order.id,
+            restaurantLatitude:
+              position.coords.latitude,
+            restaurantLongitude:
+              position.coords.longitude,
+            estimatedPayout:
+              estimatedPayout?.trim()
+                ? Number(estimatedPayout)
+                : null,
+          });
+
+        setDeliveryRequests(currentRequests => [
+          deliveryRequest,
+          ...currentRequests.filter(
+            currentRequest =>
+              currentRequest.id
+              !== deliveryRequest.id
+          ),
+        ]);
+
+        setError("");
+      } catch (requestError) {
+        console.error(
+          "Failed to assign rider automatically:",
+          requestError
+        );
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to assign rider automatically."
+        );
+      } finally {
+        setDispatchingOrderId(null);
+      }
+    };
+
+  const getActiveDeliveryRequest = (
+    orderId: string
+  ) =>
+    deliveryRequests.find(
+      request =>
+        request.orderId === orderId
+        && activeDeliveryStatuses.has(
+          request.status
+        )
+    );
+
+  const handleCancelOrder =
+    async (
+      order: Order
+    ) => {
+      const reason =
+        window.prompt(
+          "Enter the cancellation reason"
+        );
+
+      if (!reason?.trim()) {
+        return;
+      }
+
+      try {
+        setUpdatingOrderId(order.id);
+        setError("");
+
+        const updatedOrder =
+          await cancelRestaurantOrder(
+            order.id,
+            reason.trim()
+          );
+
+        setOrders(currentOrders =>
+          currentOrders.map(currentOrder =>
+            currentOrder.id === updatedOrder.id
+              ? updatedOrder
+              : currentOrder
+          )
+        );
+      } catch (requestError) {
+        console.error(
+          "Failed to cancel order:",
+          requestError
+        );
+
+        setError(
+          "Unable to cancel this order."
+        );
+      } finally {
+        setUpdatingOrderId(null);
+      }
+    };
+
   const formatPrice = (
     amount: number
   ) => {
@@ -229,7 +478,7 @@ function RestaurantOrdersPage() {
   };
 
   const formatStatus = (
-    status: OrderStatus
+    status: string
   ) => {
     return status.replaceAll(
       "_",
@@ -323,6 +572,11 @@ function RestaurantOrdersPage() {
 
                 const mapUrl =
                   getMapUrl(order);
+
+                const activeDeliveryRequest =
+                  getActiveDeliveryRequest(
+                    order.id
+                  );
 
                 return (
                   <article
@@ -460,7 +714,7 @@ function RestaurantOrdersPage() {
 
                     {nextStatus &&
                       actionLabel && (
-                        <div className="mt-6">
+                        <div className="mt-6 flex flex-wrap gap-3">
 
                           <button
                             type="button"
@@ -481,8 +735,123 @@ function RestaurantOrdersPage() {
                               : actionLabel}
                           </button>
 
+                          {(order.status === "PENDING"
+                            || order.status === "CONFIRMED") && (
+                            <button
+                              type="button"
+                              disabled={
+                                updatingOrderId
+                                  === order.id
+                              }
+                              onClick={() =>
+                                handleCancelOrder(
+                                  order
+                                )
+                              }
+                              className="rounded-3xl border border-red-300 px-6 py-3 text-sm font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Cancel Order
+                            </button>
+                          )}
+
                         </div>
                       )}
+
+                    {order.status ===
+                      "READY_FOR_PICKUP" && (
+                      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <h3 className="font-semibold text-slate-900">
+                          Dispatch Rider
+                        </h3>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          Auto assignment shares this restaurant device location with the assigned rider.
+                        </p>
+
+                        {activeDeliveryRequest ? (
+                          <div className="mt-3 rounded-2xl border border-indigo-100 bg-white px-4 py-3 text-sm text-slate-700">
+                            Delivery request already sent.
+                            {" "}
+                            Status:
+                            {" "}
+                            <span className="font-semibold text-indigo-700">
+                              {formatStatus(
+                                activeDeliveryRequest.status
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex flex-col gap-3 lg:flex-row">
+                            <button
+                              type="button"
+                              disabled={
+                                dispatchingOrderId
+                                === order.id
+                              }
+                              onClick={() =>
+                                handleAutoDispatchRider(
+                                  order
+                                )
+                              }
+                              className="rounded-3xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-300"
+                            >
+                              {dispatchingOrderId
+                                === order.id
+                                ? "Assigning..."
+                                : "Auto Assign Rider"}
+                            </button>
+
+                            <select
+                              value={
+                                selectedRiders[order.id]
+                                || ""
+                              }
+                              onChange={event =>
+                                setSelectedRiders(
+                                  current => ({
+                                    ...current,
+                                    [order.id]:
+                                      event.target.value,
+                                  })
+                                )
+                              }
+                              className="min-w-0 flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm"
+                            >
+                              <option value="">
+                                Select available rider
+                              </option>
+                              {availableRiders.map(rider => (
+                                <option
+                                  key={rider.id}
+                                  value={rider.id}
+                                >
+                                  {rider.fullName} - {rider.vehicleType} - {rider.licencePlate}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              type="button"
+                              disabled={
+                                dispatchingOrderId
+                                === order.id
+                              }
+                              onClick={() =>
+                                handleDispatchRider(
+                                  order
+                                )
+                              }
+                              className="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-300"
+                            >
+                              {dispatchingOrderId
+                                === order.id
+                                ? "Sending..."
+                                : "Send Request"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {order.status ===
                       "DELIVERED" && (
@@ -495,6 +864,9 @@ function RestaurantOrdersPage() {
                       "CANCELLED" && (
                       <div className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
                         This order was cancelled.
+                        {order.cancellationReason
+                          ? ` Reason: ${order.cancellationReason}`
+                          : ""}
                       </div>
                     )}
 

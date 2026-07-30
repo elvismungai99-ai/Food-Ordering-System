@@ -7,6 +7,7 @@ import com.foodordering.common.exception.ResourceNotFoundException;
 
 import com.foodordering.menu.MenuItem;
 import com.foodordering.menu.MenuItemRepository;
+import com.foodordering.restaurant.RestaurantService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,16 +24,21 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final MenuItemRepository menuItemRepository;
+    private final RestaurantService restaurantService;
 
     public CartService(
             CartRepository cartRepository,
-            MenuItemRepository menuItemRepository
+            MenuItemRepository menuItemRepository,
+            RestaurantService restaurantService
     ) {
         this.cartRepository =
                 cartRepository;
 
         this.menuItemRepository =
                 menuItemRepository;
+
+        this.restaurantService =
+                restaurantService;
     }
 
     @Transactional
@@ -70,6 +76,10 @@ public class CartService {
                     + " is currently unavailable"
             );
         }
+
+        validateRestaurantAvailableForOrders(
+                menuItem
+        );
 
         Cart cart =
                 getOrCreateCart(
@@ -263,6 +273,10 @@ public class CartService {
                 );
             }
 
+            validateRestaurantAvailableForOrders(
+                    menuItem
+            );
+
             cartItem.setUnitPrice(
                     menuItem.getPrice()
             );
@@ -444,5 +458,21 @@ public class CartService {
         }
 
         return item;
+    }
+
+    private void validateRestaurantAvailableForOrders(
+            MenuItem menuItem
+    ) {
+
+        if (
+                menuItem == null
+                || !restaurantService.isApprovedAndOpen(
+                        menuItem.getRestaurant()
+                )
+        ) {
+            throw new BusinessRuleException(
+                    "This restaurant is not open for orders right now"
+            );
+        }
     }
 }

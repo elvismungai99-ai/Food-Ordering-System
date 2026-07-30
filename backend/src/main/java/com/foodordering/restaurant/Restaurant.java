@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,7 +39,9 @@ public class Restaurant {
 
     private LocalTime closingTime;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RestaurantStatus status;
 
     private String category;
 
@@ -54,7 +58,7 @@ public class Restaurant {
         updatedAt = LocalDateTime.now();
 
         if (status == null) {
-            status = "OPEN";
+            status = RestaurantStatus.PENDING_APPROVAL;
         }
     }
 
@@ -119,11 +123,11 @@ public class Restaurant {
         this.closingTime = closingTime;
     }
 
-    public String getStatus() {
+    public RestaurantStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(RestaurantStatus status) {
         this.status = status;
     }
 

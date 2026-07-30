@@ -1,6 +1,7 @@
 package com.foodordering.menu;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.common.exception.ResourceNotFoundException;
 import com.foodordering.restaurant.Restaurant;
 import com.foodordering.restaurant.RestaurantRepository;
+import com.foodordering.review.ReviewRepository;
 import com.foodordering.security.JwtUtil;
 
 import jakarta.validation.Valid;
@@ -29,11 +31,13 @@ public class MenuItemController {
 
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
+    private final ReviewRepository reviewRepository;
     private final JwtUtil jwtUtil;
 
     public MenuItemController(
             MenuItemRepository menuItemRepository,
             RestaurantRepository restaurantRepository,
+            ReviewRepository reviewRepository,
             JwtUtil jwtUtil
     ) {
         this.menuItemRepository =
@@ -41,6 +45,9 @@ public class MenuItemController {
 
         this.restaurantRepository =
                 restaurantRepository;
+
+        this.reviewRepository =
+                reviewRepository;
 
         this.jwtUtil =
                 jwtUtil;
@@ -72,7 +79,7 @@ public class MenuItemController {
                                 restaurantId
                         )
                         .stream()
-                        .map(MenuItemDto::new)
+                        .map(this::toDto)
                         .toList();
 
         return ResponseEntity.ok(
@@ -132,8 +139,14 @@ public class MenuItemController {
         );
 
         item.setCategory(
-                normalizeOptional(
+                normalizeCategory(
                         dto.getCategory()
+                )
+        );
+
+        item.setAddOns(
+                normalizeAddOns(
+                        dto.getAddOns()
                 )
         );
 
@@ -157,7 +170,7 @@ public class MenuItemController {
                         HttpStatus.CREATED
                 )
                 .body(
-                        new MenuItemDto(saved)
+                        toDto(saved)
                 );
     }
 
@@ -223,8 +236,14 @@ public class MenuItemController {
         );
 
         item.setCategory(
-                normalizeOptional(
+                normalizeCategory(
                         dto.getCategory()
+                )
+        );
+
+        item.setAddOns(
+                normalizeAddOns(
+                        dto.getAddOns()
                 )
         );
 
@@ -244,8 +263,32 @@ public class MenuItemController {
                 );
 
         return ResponseEntity.ok(
-                new MenuItemDto(saved)
+                toDto(saved)
         );
+    }
+
+    private MenuItemDto toDto(
+            MenuItem item
+    ) {
+
+        MenuItemDto dto =
+                new MenuItemDto(item);
+
+        dto.setAverageRating(
+                reviewRepository
+                        .getAverageMenuItemRating(
+                                item.getId()
+                        )
+        );
+
+        dto.setReviewCount(
+                reviewRepository
+                        .countByMenuItemId(
+                                item.getId()
+                        )
+        );
+
+        return dto;
     }
 
     @DeleteMapping("/{menuItemId}")
@@ -330,6 +373,54 @@ public class MenuItemController {
         }
 
         return value.trim();
+    }
+
+    private String normalizeCategory(
+            String value
+    ) {
+
+        String normalized =
+                normalizeOptional(value);
+
+        if (normalized == null) {
+            return null;
+        }
+
+        String lower =
+                normalized.toLowerCase(Locale.ROOT);
+
+        if (
+                !"drinks".equals(lower)
+                && !"meals".equals(lower)
+                && !"dessert".equals(lower)
+        ) {
+            throw new ForbiddenOperationException(
+                    "Menu category must be Drinks, Meals or Dessert"
+            );
+        }
+
+        return switch (lower) {
+            case "drinks" -> "Drinks";
+            case "dessert" -> "Dessert";
+            default -> "Meals";
+        };
+    }
+
+    private List<String> normalizeAddOns(
+            List<String> addOns
+    ) {
+
+        if (addOns == null) {
+            return List.of();
+        }
+
+        return addOns
+                .stream()
+                .map(this::normalizeOptional)
+                .filter(addOn -> addOn != null)
+                .distinct()
+                .limit(10)
+                .toList();
     }
 
     private UUID extractUserId(

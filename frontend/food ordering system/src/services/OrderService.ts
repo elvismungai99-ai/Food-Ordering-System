@@ -40,6 +40,8 @@ export interface Order {
 
   paymentStatus: string;
   paymentReference?: string | null;
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
 
   totalAmount: number;
 
@@ -150,5 +152,35 @@ export async function updateOrderStatus(
       }
     ),
     "Unable to update the order status."
+  );
+}
+
+export async function cancelCustomerOrder(
+  orderId: string,
+  reason: string
+): Promise<Order> {
+  return requestData(
+    () => api.patch<Order>(
+      `/orders/${orderId}/cancel`,
+      {
+        reason,
+      }
+    ),
+    "Unable to cancel this order."
+  );
+}
+
+export async function cancelRestaurantOrder(
+  orderId: string,
+  reason: string
+): Promise<Order> {
+  return requestData(
+    () => api.patch<Order>(
+      `/orders/${orderId}/restaurant-cancel`,
+      {
+        reason,
+      }
+    ),
+    "Unable to cancel this restaurant order."
   );
 }

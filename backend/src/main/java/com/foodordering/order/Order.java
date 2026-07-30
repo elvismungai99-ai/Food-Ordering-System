@@ -57,6 +57,12 @@ public class Order {
     @Column(name = "payment_reference")
     private String paymentReference;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Column(
             name = "total_amount",
             nullable = false,
@@ -275,6 +281,28 @@ public class Order {
     ) {
         this.paymentReference =
                 paymentReference;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(
+            String cancellationReason
+    ) {
+        this.cancellationReason =
+                cancellationReason;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(
+            LocalDateTime cancelledAt
+    ) {
+        this.cancelledAt =
+                cancelledAt;
     }
 
 

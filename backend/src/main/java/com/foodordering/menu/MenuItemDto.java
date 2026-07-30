@@ -1,6 +1,8 @@
 package com.foodordering.menu;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.constraints.DecimalMin;
@@ -46,6 +48,9 @@ public class MenuItemDto {
     )
     private String category;
 
+    private List<String> addOns =
+            new ArrayList<>();
+
     private boolean available;
 
     @Size(
@@ -57,6 +62,8 @@ public class MenuItemDto {
             message = "Image must be a URL or uploaded JPEG, PNG or WebP image"
     )
     private String imageUrl;
+    private Double averageRating;
+    private long reviewCount;
 
     public MenuItemDto() {
     }
@@ -85,6 +92,11 @@ public class MenuItemDto {
 
         this.category =
                 menuItem.getCategory();
+
+        this.addOns =
+                new ArrayList<>(
+                        menuItem.getAddOns()
+                );
 
         this.available =
                 menuItem.isAvailable();
@@ -156,6 +168,19 @@ public class MenuItemDto {
                 category;
     }
 
+    public List<String> getAddOns() {
+        return addOns;
+    }
+
+    public void setAddOns(
+            List<String> addOns
+    ) {
+        this.addOns =
+                addOns != null
+                        ? addOns
+                        : new ArrayList<>();
+    }
+
     public boolean isAvailable() {
         return available;
     }
@@ -185,5 +210,21 @@ public class MenuItemDto {
     ) {
         this.imageUrl =
                 imageUrl;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public long getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(long reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }

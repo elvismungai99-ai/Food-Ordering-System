@@ -12,7 +12,10 @@ export interface MenuItem {
   description: string;
   price: number;
   category: string;
+  addOns?: string[];
   available: boolean;
+  averageRating?: number;
+  reviewCount?: number;
 
   imageUrl?: string | null;
 }
@@ -22,6 +25,7 @@ export interface MenuItemRequest {
   description?: string;
   price: number;
   category?: string;
+  addOns?: string[];
   available: boolean;
 
   /*

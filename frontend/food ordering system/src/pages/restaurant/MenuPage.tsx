@@ -29,6 +29,7 @@ interface MenuFormData {
   description: string;
   price: string;
   category: string;
+  addOns: string;
   available: boolean;
   imageUrl: string;
 }
@@ -38,6 +39,7 @@ const emptyForm: MenuFormData = {
   description: "",
   price: "",
   category: "",
+  addOns: "",
   available: true,
   imageUrl: "",
 };
@@ -209,6 +211,7 @@ function MenuPage() {
   const handleInputChange = (
     event: ChangeEvent<
       HTMLInputElement
+      | HTMLSelectElement
       | HTMLTextAreaElement
     >
   ) => {
@@ -415,6 +418,15 @@ function MenuPage() {
           .category
           .trim(),
 
+      addOns:
+        formData
+          .addOns
+          .split(",")
+          .map(addOn =>
+            addOn.trim()
+          )
+          .filter(Boolean),
+
       available:
         formData.available,
 
@@ -536,6 +548,11 @@ function MenuPage() {
 
       category:
         menuItem.category
+        ?? "",
+
+      addOns:
+        menuItem.addOns
+          ?.join(", ")
         ?? "",
 
       available:
@@ -781,10 +798,9 @@ function MenuPage() {
                 Category
               </label>
 
-              <input
+              <select
                 id="category"
                 name="category"
-                type="text"
                 value={
                   formData.category
                 }
@@ -792,7 +808,20 @@ function MenuPage() {
                   handleInputChange
                 }
                 className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
-              />
+              >
+                <option value="">
+                  Select category
+                </option>
+                <option value="Meals">
+                  Meals
+                </option>
+                <option value="Drinks">
+                  Drinks
+                </option>
+                <option value="Dessert">
+                  Dessert
+                </option>
+              </select>
 
               {fieldErrors.category && (
 
@@ -896,6 +925,41 @@ function MenuPage() {
                 <p className="mt-1 text-sm text-red-600">
                   {
                     fieldErrors.description
+                  }
+                </p>
+
+              )}
+
+            </div>
+
+            <div className="md:col-span-2">
+
+              <label
+                htmlFor="addOns"
+                className="block text-sm font-medium text-slate-700"
+              >
+                Add-ons
+              </label>
+
+              <input
+                id="addOns"
+                name="addOns"
+                type="text"
+                value={
+                  formData.addOns
+                }
+                onChange={
+                  handleInputChange
+                }
+                placeholder="Extra cheese, extra sauce, toppings"
+                className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              />
+
+              {fieldErrors.addOns && (
+
+                <p className="mt-1 text-sm text-red-600">
+                  {
+                    fieldErrors.addOns
                   }
                 </p>
 
@@ -1112,6 +1176,13 @@ function MenuPage() {
                             : "Unavailable"
                         }
                       </p>
+
+                      {menuItem.addOns
+                        && menuItem.addOns.length > 0 && (
+                        <p className="mt-2 text-sm text-slate-500">
+                          Add-ons: {menuItem.addOns.join(", ")}
+                        </p>
+                      )}
 
                       <div className="mt-5 flex gap-3">
 

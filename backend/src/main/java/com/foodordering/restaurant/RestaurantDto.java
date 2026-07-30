@@ -11,8 +11,11 @@ public class RestaurantDto {
     private String address;
     private LocalTime openingTime;
     private LocalTime closingTime;
-    private String status;
+    private RestaurantStatus status;
     private String category;
+    private boolean openNow;
+    private Double averageRating;
+    private long reviewCount;
 
     public RestaurantDto() {
     }
@@ -76,11 +79,11 @@ public class RestaurantDto {
         this.closingTime = closingTime;
     }
 
-    public String getStatus() {
+    public RestaurantStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(RestaurantStatus status) {
         this.status = status;
     }
 
@@ -90,5 +93,29 @@ public class RestaurantDto {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public boolean isOpenNow() {
+        return openNow;
+    }
+
+    public void setOpenNow(boolean openNow) {
+        this.openNow = openNow;
+    }
+
+    public Double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public long getReviewCount() {
+        return reviewCount;
+    }
+
+    public void setReviewCount(long reviewCount) {
+        this.reviewCount = reviewCount;
     }
 }

@@ -20,6 +20,7 @@ import com.foodordering.menu.MenuItem;
 import com.foodordering.menu.MenuItemRepository;
 import com.foodordering.restaurant.Restaurant;
 import com.foodordering.restaurant.RestaurantRepository;
+import com.foodordering.restaurant.RestaurantStatus;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -313,7 +314,7 @@ class FullOrderFlowIntegrationTest {
         restaurant.setAddress("Nairobi CBD");
         restaurant.setOpeningTime(LocalTime.of(8, 0));
         restaurant.setClosingTime(LocalTime.of(22, 0));
-        restaurant.setStatus("OPEN");
+        restaurant.setStatus(RestaurantStatus.APPROVED);
         restaurant.setCategory("Fast Food");
 
         return restaurantRepository.save(

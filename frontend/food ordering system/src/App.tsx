@@ -25,6 +25,8 @@ import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import MenuPage from "./pages/restaurant/MenuPage";
 import AnalyticsPage from "./pages/restaurant/AnalyticsPage";
 import RestaurantProfilePage from "./pages/restaurant/RestaurantProfilePage";
+import RiderDashboardPage from "./pages/rider/RiderDashboardPage";
+import RiderRegisterPage from "./pages/rider/RiderRegisterPage";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
@@ -57,6 +59,11 @@ function App() {
           <Route
             path="/register"
             element={<RegisterPage />}
+          />
+
+          <Route
+            path="/rider/register"
+            element={<RiderRegisterPage />}
           />
 
           <Route
@@ -176,6 +183,30 @@ function App() {
               path="/customer/profile"
               element={
                 <ProfilePage />
+              }
+            />
+
+          </Route>
+
+
+          {/* ========================= */}
+          {/* RIDER ROUTES */}
+          {/* ========================= */}
+
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoles={[
+                  "RIDER",
+                ]}
+              />
+            }
+          >
+
+            <Route
+              path="/rider/dashboard"
+              element={
+                <RiderDashboardPage />
               }
             />
 

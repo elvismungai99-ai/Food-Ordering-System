@@ -247,6 +247,16 @@ function LoginPage() {
       }
 
       if (
+        role === "RIDER"
+      ) {
+        navigate(
+          "/rider/dashboard"
+        );
+
+        return;
+      }
+
+      if (
         role === "SUPER_ADMIN"
       ) {
         navigate(
@@ -470,6 +480,16 @@ function LoginPage() {
             Create account
           </Link>
 
+        </p>
+
+        <p className="mt-3 text-center text-sm text-slate-500">
+          Registering as a rider?{" "}
+          <Link
+            to="/rider/register"
+            className="font-semibold text-indigo-600"
+          >
+            Create rider account
+          </Link>
         </p>
 
       </div>

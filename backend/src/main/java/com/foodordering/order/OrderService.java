@@ -18,11 +18,13 @@ import com.foodordering.payment.PaymentService;
 
 import com.foodordering.restaurant.Restaurant;
 import com.foodordering.restaurant.RestaurantRepository;
+import com.foodordering.restaurant.RestaurantService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +38,7 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final MenuItemRepository menuItemRepository;
     private final RestaurantRepository restaurantRepository;
+    private final RestaurantService restaurantService;
     private final PaymentService paymentService;
     private final OrderStateMachine orderStateMachine;
 
@@ -44,6 +47,7 @@ public class OrderService {
             CartRepository cartRepository,
             MenuItemRepository menuItemRepository,
             RestaurantRepository restaurantRepository,
+            RestaurantService restaurantService,
             PaymentService paymentService,
             OrderStateMachine orderStateMachine
     ) {
@@ -58,6 +62,9 @@ public class OrderService {
 
         this.restaurantRepository =
                 restaurantRepository;
+
+        this.restaurantService =
+                restaurantService;
 
         this.paymentService =
                 paymentService;
@@ -202,6 +209,12 @@ public class OrderService {
                                         "Restaurant not found"
                                 )
                         );
+
+        if (!restaurantService.isApprovedAndOpen(restaurant)) {
+            throw new BusinessRuleException(
+                    "This restaurant is not open for orders right now"
+            );
+        }
 
         /*
          * Protect against restaurant price changes.
@@ -400,6 +413,12 @@ public class OrderService {
             );
         }
 
+        if (newStatus == OrderStatus.CANCELLED) {
+            throw new BusinessRuleException(
+                    "Use the cancellation endpoint so a reason is recorded"
+            );
+        }
+
         Order order =
                 orderRepository
                         .findById(
@@ -429,6 +448,104 @@ public class OrderService {
         return new OrderDto(
                 savedOrder
         );
+    }
+
+    @Transactional
+    public OrderDto cancelCustomerOrder(
+            UUID customerId,
+            UUID orderId,
+            String reason
+    ) {
+
+        Order order =
+                orderRepository
+                        .findByIdAndCustomerId(
+                                orderId,
+                                customerId
+                        )
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Order not found"
+                                )
+                        );
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new BusinessRuleException(
+                    "Customers can cancel only pending orders"
+            );
+        }
+
+        cancelOrder(order, reason);
+
+        return new OrderDto(
+                orderRepository.save(order)
+        );
+    }
+
+    @Transactional
+    public OrderDto cancelRestaurantOrder(
+            UUID ownerId,
+            UUID orderId,
+            String reason
+    ) {
+
+        Order order =
+                orderRepository
+                        .findById(orderId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Order not found"
+                                )
+                        );
+
+        Restaurant restaurant =
+                restaurantRepository
+                        .findById(order.getRestaurantId())
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Restaurant not found"
+                                )
+                        );
+
+        if (
+                restaurant.getOwnerId() == null
+                || !restaurant.getOwnerId().equals(ownerId)
+        ) {
+            throw new BusinessRuleException(
+                    "You can cancel only orders for your restaurant"
+            );
+        }
+
+        if (
+                order.getStatus() != OrderStatus.PENDING
+                && order.getStatus() != OrderStatus.CONFIRMED
+        ) {
+            throw new BusinessRuleException(
+                    "Restaurant can cancel only before preparation starts"
+            );
+        }
+
+        cancelOrder(order, reason);
+
+        return new OrderDto(
+                orderRepository.save(order)
+        );
+    }
+
+    private void cancelOrder(
+            Order order,
+            String reason
+    ) {
+
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessRuleException(
+                    "Cancellation reason is required"
+            );
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancellationReason(reason.trim());
+        order.setCancelledAt(LocalDateTime.now());
     }
 
     // =========================================================

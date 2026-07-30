@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.foodordering.order.dto.OrderDto;
+import com.foodordering.order.dto.CancelOrderRequest;
 import com.foodordering.order.dto.PlaceOrderRequest;
 import com.foodordering.order.dto.UpdateOrderStatusRequest;
 import com.foodordering.common.exception.ForbiddenOperationException;
@@ -216,17 +219,31 @@ public class OrderController {
             String authHeader
     ) {
 
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (
+                authentication != null
+                && authentication
+                        .getAuthorities()
+                        .stream()
+                        .anyMatch(authority ->
+                                isRestaurantOwnerRole(
+                                        authority.getAuthority()
+                                )
+                        )
+        ) {
+            return;
+        }
+
         String role =
                 extractRole(
                         authHeader
                 );
 
-        if (
-                !"OWNER".equals(role)
-                && !"RESTAURANT_ADMIN".equals(role)
-                && !"RESTAURANT_OWNER".equals(role)
-                && !"SUPER_ADMIN".equals(role)
-        ) {
+        if (!isRestaurantOwnerRole(role)) {
             throw new ForbiddenOperationException(
                     "Only restaurant owners can access restaurant orders"
             );
@@ -242,6 +259,76 @@ public class OrderController {
 
         return normalizeRole(
                 jwtUtil.extractRole(token)
+        );
+    }
+
+    @PatchMapping(
+            "/{orderId}/cancel"
+    )
+    public ResponseEntity<OrderDto>
+    cancelCustomerOrder(
+
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @PathVariable
+            UUID orderId,
+
+            @Valid
+            @RequestBody
+            CancelOrderRequest request
+    ) {
+
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
+
+        requireCustomer(
+                authHeader
+        );
+
+        return ResponseEntity.ok(
+                orderService.cancelCustomerOrder(
+                        customerId,
+                        orderId,
+                        request.getReason()
+                )
+        );
+    }
+
+    @PatchMapping(
+            "/{orderId}/restaurant-cancel"
+    )
+    public ResponseEntity<OrderDto>
+    cancelRestaurantOrder(
+
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @PathVariable
+            UUID orderId,
+
+            @Valid
+            @RequestBody
+            CancelOrderRequest request
+    ) {
+
+        UUID ownerId =
+                extractUserId(
+                        authHeader
+                );
+
+        requireRestaurantOwner(
+                authHeader
+        );
+
+        return ResponseEntity.ok(
+                orderService.cancelRestaurantOrder(
+                        ownerId,
+                        orderId,
+                        request.getReason()
+                )
         );
     }
 
@@ -262,5 +349,19 @@ public class OrderController {
         }
 
         return normalized;
+    }
+
+    private boolean isRestaurantOwnerRole(
+            String role
+    ) {
+
+        String normalized =
+                normalizeRole(role);
+
+        return "OWNER".equals(normalized)
+                || "RESTAURANT_ADMIN".equals(normalized)
+                || "RESTAURANT_OWNER".equals(normalized)
+                || "ADMIN_RESTAURANT".equals(normalized)
+                || "SUPER_ADMIN".equals(normalized);
     }
 } 

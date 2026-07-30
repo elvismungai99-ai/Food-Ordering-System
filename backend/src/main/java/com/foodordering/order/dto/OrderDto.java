@@ -21,6 +21,8 @@ public class OrderDto {
 
     private PaymentStatus paymentStatus;
     private String paymentReference;
+    private String cancellationReason;
+    private String cancelledAt;
 
     private OrderStatus status;
     private BigDecimal totalAmount;
@@ -69,6 +71,10 @@ public class OrderDto {
 
         this.paymentStatus = order.getPaymentStatus();
         this.paymentReference = order.getPaymentReference();
+        this.cancellationReason = order.getCancellationReason();
+        this.cancelledAt = order.getCancelledAt() != null
+                ? order.getCancelledAt().toString()
+                : null;
     }
 
     public UUID getId() {
@@ -125,5 +131,13 @@ public class OrderDto {
 
     public String getPaymentReference() {
         return paymentReference;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public String getCancelledAt() {
+        return cancelledAt;
     }
 }

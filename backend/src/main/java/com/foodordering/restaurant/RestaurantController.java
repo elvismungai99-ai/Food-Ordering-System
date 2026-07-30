@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.security.JwtUtil;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
 @Validated
@@ -84,6 +87,28 @@ public class RestaurantController {
         return ResponseEntity.ok(
                 restaurantService.getMyRestaurant(
                         ownerId
+                )
+        );
+    }
+
+    @PostMapping
+    public ResponseEntity<RestaurantDto>
+    createRestaurant(
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @Valid
+            @RequestBody
+            RestaurantDto dto
+    ) {
+
+        UUID ownerId =
+                extractUserId(authHeader);
+
+        return ResponseEntity.ok(
+                restaurantService.createRestaurant(
+                        ownerId,
+                        dto
                 )
         );
     }

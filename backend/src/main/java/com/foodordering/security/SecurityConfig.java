@@ -169,6 +169,12 @@ public class SecurityConfig {
                         )
                         .permitAll()
 
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/riders/register"
+                        )
+                        .permitAll()
+
                         // =================================
                         // SUPER ADMIN
                         // =================================
@@ -201,6 +207,7 @@ public class SecurityConfig {
                          */
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/restaurants",
                                 "/api/restaurants/**"
                         )
                         .hasAnyAuthority(
@@ -213,6 +220,7 @@ public class SecurityConfig {
                          */
                         .requestMatchers(
                                 HttpMethod.PUT,
+                                "/api/restaurants",
                                 "/api/restaurants/**"
                         )
                         .hasAnyAuthority(
@@ -222,6 +230,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.PATCH,
+                                "/api/restaurants",
                                 "/api/restaurants/**"
                         )
                         .hasAnyAuthority(
@@ -248,6 +257,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/menu-items/restaurant/**"
+                        )
+                        .permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/reviews/**"
                         )
                         .permitAll()
 

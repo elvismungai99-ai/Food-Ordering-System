@@ -15,8 +15,18 @@ import {
 } from "../../services/MenuItemService";
 
 import {
+  getRestaurantById,
+  type Restaurant,
+} from "../../services/RestaurantService";
+
+import {
   useCart,
 } from "../../context/CartContext";
+
+import {
+  getMenuItemReviews,
+  type Review,
+} from "../../services/ReviewService";
 
 function RestaurantMenuPage() {
   const navigate = useNavigate();
@@ -31,6 +41,9 @@ function RestaurantMenuPage() {
 
   const [menuItems, setMenuItems] =
     useState<MenuItem[]>([]);
+
+  const [restaurant, setRestaurant] =
+    useState<Restaurant | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -48,6 +61,21 @@ function RestaurantMenuPage() {
     setAddingItemId,
   ] = useState<string | null>(null);
 
+  const [
+    expandedReviewItemId,
+    setExpandedReviewItemId,
+  ] = useState<string | null>(null);
+
+  const [
+    reviewsByMenuItemId,
+    setReviewsByMenuItemId,
+  ] = useState<Record<string, Review[]>>({});
+
+  const [
+    loadingReviewsItemId,
+    setLoadingReviewsItemId,
+  ] = useState<string | null>(null);
+
   useEffect(() => {
     const loadMenu = async () => {
       if (!restaurantId) {
@@ -63,12 +91,19 @@ function RestaurantMenuPage() {
         setLoading(true);
         setError("");
 
-        const data =
+        const restaurantData =
+          await getRestaurantById(
+            restaurantId
+          );
+
+        setRestaurant(restaurantData);
+
+        const menuData =
           await getMenuByRestaurant(
             restaurantId
           );
 
-        setMenuItems(data);
+        setMenuItems(menuData);
       } catch (requestError) {
         console.error(
           "Failed to load restaurant menu:",
@@ -116,7 +151,10 @@ function RestaurantMenuPage() {
   const handleAddToCart = async (
     menuItem: MenuItem
   ) => {
-    if (!menuItem.available) {
+    if (
+      !menuItem.available
+      || restaurant?.openNow === false
+    ) {
       return;
     }
 
@@ -162,6 +200,56 @@ function RestaurantMenuPage() {
     ).format(amount);
   };
 
+  const formatReviewDate = (
+    value: string
+  ) => {
+    return new Date(value).toLocaleDateString(
+      "en-KE",
+      {
+        dateStyle: "medium",
+      }
+    );
+  };
+
+  const toggleMenuItemReviews = async (
+    menuItemId: string
+  ) => {
+    if (expandedReviewItemId === menuItemId) {
+      setExpandedReviewItemId(null);
+      return;
+    }
+
+    setExpandedReviewItemId(menuItemId);
+
+    if (reviewsByMenuItemId[menuItemId]) {
+      return;
+    }
+
+    try {
+      setLoadingReviewsItemId(menuItemId);
+
+      const reviews =
+        await getMenuItemReviews(menuItemId);
+
+      setReviewsByMenuItemId((current) => ({
+        ...current,
+        [menuItemId]: reviews,
+      }));
+    } catch (requestError) {
+      console.error(
+        "Failed to load menu item reviews:",
+        requestError
+      );
+
+      setReviewsByMenuItemId((current) => ({
+        ...current,
+        [menuItemId]: [],
+      }));
+    } finally {
+      setLoadingReviewsItemId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
@@ -185,6 +273,14 @@ function RestaurantMenuPage() {
             <p className="mt-2 text-slate-500">
               Browse available items and add them to your cart.
             </p>
+
+            {restaurant && (
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                {restaurant.openNow
+                  ? "Open for orders"
+                  : "Closed right now"}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3">
@@ -300,10 +396,88 @@ function RestaurantMenuPage() {
                               )}
                             </p>
 
+                            {menuItem.reviewCount
+                              ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleMenuItemReviews(
+                                      menuItem.id
+                                    )
+                                  }
+                                  className="mt-2 text-left text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                >
+                                  Rating: {Number(
+                                    menuItem.averageRating
+                                    ?? 0
+                                  ).toFixed(1)} / 5 ({menuItem.reviewCount})
+                                </button>
+                              )
+                              : (
+                                <p className="mt-2 text-sm text-slate-500">
+                                  No ratings yet
+                                </p>
+                              )}
+
+                            {menuItem.addOns
+                              && menuItem.addOns.length > 0 && (
+                              <p className="mt-2 text-sm text-slate-500">
+                                Add-ons: {menuItem.addOns.join(", ")}
+                              </p>
+                            )}
+
+                            {expandedReviewItemId === menuItem.id && (
+                              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <h4 className="text-sm font-semibold text-slate-900">
+                                  Menu Reviews
+                                </h4>
+
+                                {loadingReviewsItemId === menuItem.id ? (
+                                  <p className="mt-3 text-sm text-slate-500">
+                                    Loading reviews...
+                                  </p>
+                                ) : reviewsByMenuItemId[menuItem.id]
+                                    ?.length ? (
+                                  <div className="mt-3 space-y-3">
+                                    {reviewsByMenuItemId[
+                                      menuItem.id
+                                    ].map(review => (
+                                      <div
+                                        key={review.id}
+                                        className="border-b border-slate-200 pb-3 last:border-b-0 last:pb-0"
+                                      >
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-sm font-semibold text-slate-800">
+                                            {review.rating} / 5
+                                          </span>
+
+                                          <span className="text-xs text-slate-400">
+                                            {formatReviewDate(
+                                              review.createdAt
+                                            )}
+                                          </span>
+                                        </div>
+
+                                        <p className="mt-2 text-sm text-slate-600">
+                                          {review.comment
+                                            || "No comment provided."}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="mt-3 text-sm text-slate-500">
+                                    No reviews yet.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
                             <button
                               type="button"
                               disabled={
                                 !menuItem.available
+                                || restaurant?.openNow === false
                                 || addingItemId
                                   === menuItem.id
                               }
@@ -317,7 +491,9 @@ function RestaurantMenuPage() {
                               {addingItemId
                               === menuItem.id
                                 ? "Adding..."
-                                : menuItem.available
+                                : restaurant?.openNow === false
+                                  ? "Restaurant Closed"
+                                  : menuItem.available
                                   ? "Add to Cart"
                                   : "Unavailable"}
                             </button>
