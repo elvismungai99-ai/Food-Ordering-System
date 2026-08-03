@@ -322,13 +322,25 @@ function RiderDashboardPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
-          >
-            Logout
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/")
+              }
+              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+            >
+              Home
+            </button>
+
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         {error && (

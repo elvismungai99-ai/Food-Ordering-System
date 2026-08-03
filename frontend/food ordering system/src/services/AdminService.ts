@@ -75,10 +75,67 @@ export interface DeliveryActivity {
   deliveredAt?: string | null;
 }
 
+export interface OrderActivity {
+  id: string;
+  customerId: string;
+  restaurantId: string;
+  restaurantName: string;
+  deliveryAddress: string;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
+  paymentStatus: string;
+  paymentReference?: string | null;
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
+  status: string;
+  totalAmount: number;
+  items: {
+    id: string;
+    menuItemId: string;
+    itemName: string;
+    itemDescription?: string | null;
+    imageUrl?: string | null;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export const getAllCustomers = async (): Promise<Customer[]> => {
   return requestData(
     () => api.get<Customer[]>("/admin/customers"),
     "Unable to load customers."
+  );
+};
+
+export const getCustomerActivities = async (
+  id: string
+): Promise<OrderActivity[]> => {
+  return requestData(
+    () => api.get<OrderActivity[]>(
+      `/admin/customers/${id}/activities`
+    ),
+    "Unable to load customer activities."
+  );
+};
+
+export const getAllOwners = async (): Promise<Customer[]> => {
+  return requestData(
+    () => api.get<Customer[]>("/admin/owners"),
+    "Unable to load restaurant owners."
+  );
+};
+
+export const getOwnerActivities = async (
+  id: string
+): Promise<OrderActivity[]> => {
+  return requestData(
+    () => api.get<OrderActivity[]>(
+      `/admin/owners/${id}/activities`
+    ),
+    "Unable to load restaurant owner activities."
   );
 };
 
@@ -155,6 +212,17 @@ Promise<DeliveryActivity[]> => {
   return requestData(
     () => api.get<DeliveryActivity[]>(
       "/admin/riders/activities"
+    ),
+    "Unable to load rider activities."
+  );
+};
+
+export const getRiderActivitiesById = async (
+  id: string
+): Promise<DeliveryActivity[]> => {
+  return requestData(
+    () => api.get<DeliveryActivity[]>(
+      `/admin/riders/${id}/activities`
     ),
     "Unable to load rider activities."
   );

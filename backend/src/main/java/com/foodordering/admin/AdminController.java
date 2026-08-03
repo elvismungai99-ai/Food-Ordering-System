@@ -18,7 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.foodordering.User.dto.UserDto;
 import com.foodordering.User.entity.Role;
 import com.foodordering.User.repository.UserRepository;
+import com.foodordering.order.OrderRepository;
+import com.foodordering.order.dto.OrderDto;
 import com.foodordering.restaurant.RestaurantDto;
+import com.foodordering.restaurant.Restaurant;
 import com.foodordering.restaurant.RestaurantRepository;
 import com.foodordering.restaurant.RestaurantService;
 import com.foodordering.restaurant.RestaurantStatus;
@@ -40,6 +43,7 @@ public class AdminController {
     private final RestaurantService restaurantService;
     private final RiderRepository riderRepository;
     private final DeliveryRequestRepository deliveryRequestRepository;
+    private final OrderRepository orderRepository;
     private final JwtUtil jwtUtil;
 
     public AdminController(
@@ -48,6 +52,7 @@ public class AdminController {
             RestaurantService restaurantService,
             RiderRepository riderRepository,
             DeliveryRequestRepository deliveryRequestRepository,
+            OrderRepository orderRepository,
             JwtUtil jwtUtil
     ) {
         this.userRepository = userRepository;
@@ -55,6 +60,7 @@ public class AdminController {
         this.restaurantService = restaurantService;
         this.riderRepository = riderRepository;
         this.deliveryRequestRepository = deliveryRequestRepository;
+        this.orderRepository = orderRepository;
         this.jwtUtil = jwtUtil;
     }
 
@@ -98,6 +104,29 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/customers/{id}/activities")
+    public ResponseEntity<?> getCustomerActivities(
+            @RequestHeader(
+                    value = "Authorization",
+                    required = false
+            )
+            String authHeader,
+            @PathVariable UUID id
+    ) {
+        try {
+            requireAdmin(authHeader);
+            return ResponseEntity.ok(
+                    orderRepository
+                            .findByCustomerIdOrderByCreatedAtDesc(id)
+                            .stream()
+                            .map(OrderDto::new)
+                            .toList()
+            );
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/owners")
     public ResponseEntity<?> getAllOwners(
             @RequestHeader(
@@ -115,6 +144,38 @@ public class AdminController {
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(owners);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/owners/{id}/activities")
+    public ResponseEntity<?> getOwnerActivities(
+            @RequestHeader(
+                    value = "Authorization",
+                    required = false
+            )
+            String authHeader,
+            @PathVariable UUID id
+    ) {
+        try {
+            requireAdmin(authHeader);
+
+            Restaurant restaurant = restaurantRepository
+                    .findByOwnerId(id)
+                    .orElseThrow(() ->
+                            new RuntimeException("Restaurant not found for this owner")
+                    );
+
+            return ResponseEntity.ok(
+                    orderRepository
+                            .findByRestaurantIdOrderByCreatedAtDesc(
+                                    restaurant.getId()
+                            )
+                            .stream()
+                            .map(OrderDto::new)
+                            .toList()
+            );
         } catch (RuntimeException e) {
             return ResponseEntity.status(403).body(e.getMessage());
         }

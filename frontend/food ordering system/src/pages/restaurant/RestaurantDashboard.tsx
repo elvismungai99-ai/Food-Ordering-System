@@ -201,15 +201,31 @@ function RestaurantDashboard() {
           </div>
 
 
-          <button
-            type="button"
-            onClick={
-              handleLogout
-            }
-            className="rounded-3xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            Logout
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/"
+                )
+              }
+              className="rounded-3xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Home
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                handleLogout
+              }
+              className="rounded-3xl border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Logout
+            </button>
+
+          </div>
 
         </div>
 
