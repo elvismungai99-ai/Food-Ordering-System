@@ -161,13 +161,13 @@ function RestaurantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="food-page">
       <CustomerHeader />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-950">
+            <h1 className="text-3xl font-black text-slate-950">
               Restaurants
             </h1>
 
@@ -182,7 +182,7 @@ function RestaurantPage() {
             onClick={() =>
               navigate("/customer/dashboard")
             }
-            className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="food-button-secondary px-5 py-2 text-sm"
           >
             ← Back to dashboard
           </button>
@@ -196,7 +196,7 @@ function RestaurantPage() {
               setSearchTerm(event.target.value)
             }
             placeholder="Search by name, address or description..."
-            className="flex-1 rounded-3xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            className="food-input flex-1 px-5 py-3"
           />
 
           <select
@@ -206,7 +206,7 @@ function RestaurantPage() {
                 event.target.value
               )
             }
-            className="rounded-3xl border border-slate-300 bg-white px-5 py-3 text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            className="food-input px-5 py-3"
           >
             <option value="">
               All Categories
@@ -238,17 +238,13 @@ function RestaurantPage() {
         )}
 
         {loading ? (
-          <section className="rounded-[24px] border border-slate-200 bg-white p-12 text-center">
+          <section className="food-card p-12 text-center">
             <p className="text-slate-500">
               Loading restaurants...
             </p>
           </section>
         ) : restaurants.length === 0 ? (
-          <section className="rounded-[24px] border border-slate-200 bg-white p-12 text-center">
-            <div className="text-5xl">
-              🍽️
-            </div>
-
+          <section className="food-card p-12 text-center">
             <h2 className="mt-5 text-xl font-semibold text-slate-900">
               No restaurants found
             </h2>
@@ -266,7 +262,7 @@ function RestaurantPage() {
                   setSearchTerm("");
                   setSelectedCategory("");
                 }}
-                className="mt-6 rounded-3xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="food-button-primary mt-6 px-6 py-3 text-sm"
               >
                 Clear filters
               </button>
@@ -313,7 +309,7 @@ function RestaurantPage() {
                           );
                         }
                       }}
-                      className="cursor-pointer rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                      className="food-card food-card-hover cursor-pointer overflow-hidden p-6"
                     >
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <h2 className="text-lg font-semibold text-slate-900">
@@ -323,7 +319,7 @@ function RestaurantPage() {
                         <span
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             status === "OPEN"
-                              ? "bg-teal-100 text-teal-700"
+                              ? "bg-emerald-100 text-emerald-700"
                               : status ===
                                   "CLOSED"
                                 ? "bg-red-100 text-red-700"
@@ -335,7 +331,7 @@ function RestaurantPage() {
                       </div>
 
                       {restaurant.category && (
-                        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-indigo-500">
+                        <p className="mb-3 text-xs font-bold uppercase text-emerald-600">
                           {restaurant.category}
                         </p>
                       )}
@@ -384,7 +380,7 @@ function RestaurantPage() {
                             restaurant.id
                           );
                         }}
-                        className="mt-6 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                        className="food-button-primary mt-6 w-full px-4 py-3 text-sm"
                       >
                         View Menu
                       </button>

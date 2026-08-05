@@ -73,7 +73,7 @@ function HomePage() {
       : dashboardPath;
 
   return (
-    <div className="min-h-screen bg-[#f7f8f4] text-slate-950">
+    <div className="food-page text-slate-950">
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
         <Link
           to="/"
@@ -85,14 +85,14 @@ function HomePage() {
         <nav className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/rider/register"
-            className="hidden rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white sm:inline-flex"
+            className="food-button-secondary hidden px-4 py-2 text-sm sm:inline-flex"
           >
             Become a rider
           </Link>
           {token ? (
             <Link
               to={dashboardPath}
-              className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+              className="food-button-primary px-5 py-2 text-sm"
             >
               Dashboard
             </Link>
@@ -100,13 +100,13 @@ function HomePage() {
             <>
               <Link
                 to="/login"
-                className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+                className="food-button-secondary px-4 py-2 text-sm"
               >
                 Login
               </Link>
               <Link
                 to="/register"
-                className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                className="food-button-primary px-5 py-2 text-sm"
               >
                 Register
               </Link>
@@ -128,7 +128,7 @@ function HomePage() {
               Discover restaurants, place secure orders, and follow delivery progress from one simple food ordering platform.
             </p>
 
-            <div className="mt-8 max-w-2xl rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-200/70">
+            <div className="food-card mt-8 max-w-2xl p-3">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <label className="sr-only" htmlFor="delivery-location">
                   Delivery address
@@ -137,17 +137,17 @@ function HomePage() {
                   id="delivery-location"
                   type="text"
                   placeholder="Enter your delivery address"
-                  className="min-h-12 flex-1 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-800 outline-none focus:border-emerald-500"
+                  className="food-input min-h-12 flex-1 px-4 text-sm font-medium"
                 />
                 <button
                   type="button"
-                  className="min-h-12 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                  className="food-button-secondary min-h-12 px-4 text-sm"
                 >
                   Use location
                 </button>
                 <Link
                   to={token ? browsePath : "/login"}
-                  className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white hover:bg-emerald-700"
+                  className="food-button-primary inline-flex min-h-12 items-center justify-center px-5 text-sm"
                 >
                   Find food
                 </Link>
@@ -170,7 +170,7 @@ function HomePage() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[32px] bg-emerald-900 shadow-2xl shadow-emerald-900/20">
+          <div className="relative overflow-hidden rounded-[32px] bg-emerald-900 shadow-2xl shadow-emerald-900/20 ring-1 ring-emerald-200/40">
             <img
               src={heroImage}
               alt="Prepared food ready for delivery"
@@ -184,7 +184,7 @@ function HomePage() {
                 {["Order", "Prepare", "Deliver"].map((item) => (
                   <div
                     key={item}
-                    className="rounded-xl bg-slate-100 px-3 py-3 text-sm font-bold text-slate-800"
+                className="rounded-xl bg-emerald-50 px-3 py-3 text-sm font-bold text-emerald-900"
                   >
                     {item}
                   </div>
@@ -194,7 +194,7 @@ function HomePage() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-white py-8">
+        <section className="border-y border-emerald-100 bg-white/86 py-8 backdrop-blur">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <h2 className="text-2xl font-black text-slate-950">
@@ -212,7 +212,7 @@ function HomePage() {
                 <Link
                   key={category}
                   to={token ? browsePath : "/login"}
-                  className="rounded-2xl border border-slate-200 bg-[#f7f8f4] px-4 py-5 text-center text-sm font-bold text-slate-800 hover:border-emerald-300 hover:bg-emerald-50"
+                  className="food-card food-card-hover px-4 py-5 text-center text-sm font-bold text-slate-800"
                 >
                   {category}
                 </Link>
@@ -226,7 +226,7 @@ function HomePage() {
             {steps.map((step, index) => (
               <article
                 key={step.title}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                className="food-card food-card-hover p-6"
               >
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-sm font-black text-emerald-700">
                   {index + 1}
@@ -265,7 +265,7 @@ function HomePage() {
               {roleLinks.map((role) => (
                 <article
                   key={role.title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-black/10"
                 >
                   <h3 className="text-xl font-black">
                     {role.title}

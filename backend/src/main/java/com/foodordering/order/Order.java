@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.foodordering.payment.PaymentMethod;
+
 @Entity
 @Table(name = "orders")
 public class Order {
@@ -57,6 +59,10 @@ public class Order {
     @Column(name = "payment_reference")
     private String paymentReference;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false)
+    private PaymentMethod paymentMethod;
+
     @Column(name = "cancellation_reason", columnDefinition = "TEXT")
     private String cancellationReason;
 
@@ -70,6 +76,46 @@ public class Order {
             scale = 2
     )
     private BigDecimal totalAmount;
+
+    @Column(
+            name = "subtotal_amount",
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal subtotalAmount;
+
+    @Column(
+            name = "delivery_fee",
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal deliveryFee;
+
+    @Column(
+            name = "service_fee",
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal serviceFee;
+
+    @Column(
+            name = "tax_amount",
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal taxAmount;
+
+    @Column(
+            name = "discount_amount",
+            nullable = false,
+            precision = 12,
+            scale = 2
+    )
+    private BigDecimal discountAmount;
 
     @OneToMany(
             mappedBy = "order",
@@ -115,8 +161,38 @@ public class Order {
                     PaymentStatus.PENDING;
         }
 
+        if (paymentMethod == null) {
+            paymentMethod =
+                    PaymentMethod.CASH_ON_DELIVERY;
+        }
+
         if (totalAmount == null) {
             totalAmount =
+                    BigDecimal.ZERO;
+        }
+
+        if (subtotalAmount == null) {
+            subtotalAmount =
+                    BigDecimal.ZERO;
+        }
+
+        if (deliveryFee == null) {
+            deliveryFee =
+                    BigDecimal.ZERO;
+        }
+
+        if (serviceFee == null) {
+            serviceFee =
+                    BigDecimal.ZERO;
+        }
+
+        if (taxAmount == null) {
+            taxAmount =
+                    BigDecimal.ZERO;
+        }
+
+        if (discountAmount == null) {
+            discountAmount =
                     BigDecimal.ZERO;
         }
     }
@@ -283,6 +359,17 @@ public class Order {
                 paymentReference;
     }
 
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(
+            PaymentMethod paymentMethod
+    ) {
+        this.paymentMethod =
+                paymentMethod;
+    }
+
     public String getCancellationReason() {
         return cancellationReason;
     }
@@ -315,6 +402,61 @@ public class Order {
     ) {
         this.totalAmount =
                 totalAmount;
+    }
+
+    public BigDecimal getSubtotalAmount() {
+        return subtotalAmount;
+    }
+
+    public void setSubtotalAmount(
+            BigDecimal subtotalAmount
+    ) {
+        this.subtotalAmount =
+                subtotalAmount;
+    }
+
+    public BigDecimal getDeliveryFee() {
+        return deliveryFee;
+    }
+
+    public void setDeliveryFee(
+            BigDecimal deliveryFee
+    ) {
+        this.deliveryFee =
+                deliveryFee;
+    }
+
+    public BigDecimal getServiceFee() {
+        return serviceFee;
+    }
+
+    public void setServiceFee(
+            BigDecimal serviceFee
+    ) {
+        this.serviceFee =
+                serviceFee;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(
+            BigDecimal taxAmount
+    ) {
+        this.taxAmount =
+                taxAmount;
+    }
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(
+            BigDecimal discountAmount
+    ) {
+        this.discountAmount =
+                discountAmount;
     }
 
 

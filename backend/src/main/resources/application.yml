@@ -1,13 +1,15 @@
 spring:
+  config:
+    import: optional:classpath:application-local.yml
   application:
     name: backend
   devtools:
     restart:
       enabled: false
   datasource:
-    url: jdbc:postgresql://localhost:5432/Food_Ordering_db
-    username: food_user
-    password: foodie123
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/Food_Ordering_db}
+    username: ${DB_USERNAME:food_user}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -21,7 +23,7 @@ server:
   port: 8080
 
 jwt:
-  secret: f00d0rd3r1ng$yst3mS3cr3tK3y2026!!SecureKey32Chars
+  secret: ${JWT_SECRET}
 
 app:
   frontend-base-url: http://localhost:5173
@@ -31,6 +33,21 @@ app:
 openrouteservice:
   base-url: https://api.openrouteservice.org
   api-key: ${ORS_API_KEY:}
+
+payments:
+  pricing:
+    delivery-fee: ${DELIVERY_FEE:150.00}
+    service-fee: ${SERVICE_FEE:35.00}
+    tax-rate: ${TAX_RATE:0.00}
+    discount-amount: ${DISCOUNT_AMOUNT:0.00}
+  mpesa:
+    enabled: ${MPESA_ENABLED:false}
+    environment: ${MPESA_ENVIRONMENT:sandbox}
+    consumer-key: ${MPESA_CONSUMER_KEY:}
+    consumer-secret: ${MPESA_CONSUMER_SECRET:}
+    shortcode: ${MPESA_SHORTCODE:}
+    passkey: ${MPESA_PASSKEY:}
+    callback-url: ${MPESA_CALLBACK_URL:}
 
 security:
   rate-limit:

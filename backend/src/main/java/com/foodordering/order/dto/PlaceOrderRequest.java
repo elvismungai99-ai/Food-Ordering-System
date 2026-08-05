@@ -2,6 +2,8 @@ package com.foodordering.order.dto;
 
 import java.math.BigDecimal;
 
+import com.foodordering.payment.PaymentMethod;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -38,6 +40,14 @@ public class PlaceOrderRequest {
     )
     private BigDecimal deliveryLongitude;
 
+    private PaymentMethod paymentMethod;
+
+    @Size(
+            max = 20,
+            message = "M-Pesa phone number must not exceed 20 characters"
+    )
+    private String mpesaPhoneNumber;
+
     public String getDeliveryAddress() {
         return deliveryAddress;
     }
@@ -70,4 +80,27 @@ public class PlaceOrderRequest {
         this.deliveryLongitude =
                 deliveryLongitude;
     }
+
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(
+            PaymentMethod paymentMethod
+    ) {
+        this.paymentMethod =
+                paymentMethod;
+    }
+
+    public String getMpesaPhoneNumber() {
+        return mpesaPhoneNumber;
+    }
+
+    public void setMpesaPhoneNumber(
+            String mpesaPhoneNumber
+    ) {
+        this.mpesaPhoneNumber =
+                mpesaPhoneNumber;
+    }
+
 }

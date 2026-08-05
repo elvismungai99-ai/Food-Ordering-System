@@ -285,8 +285,8 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="food-page">
+      <header className="border-b border-emerald-100/80 bg-white/90 shadow-sm shadow-slate-200/50 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
           <div>
             <p className="text-sm font-bold uppercase text-emerald-700">
@@ -301,7 +301,7 @@ function AdminDashboard() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="food-button-secondary px-5 py-2 text-sm"
             >
               Home
             </button>
@@ -309,7 +309,7 @@ function AdminDashboard() {
             <button
               type="button"
               onClick={logout}
-              className="rounded-lg border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50"
+              className="rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50"
             >
               Logout
             </button>
@@ -324,8 +324,8 @@ function AdminDashboard() {
               onClick={() => openSection(section.id)}
               className={`rounded-full px-5 py-2 text-sm font-bold transition ${
                 activeSection === section.id
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-emerald-600 text-white shadow-sm shadow-emerald-200"
+                  : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-emerald-50 hover:text-emerald-700"
               }`}
             >
               {section.label}
@@ -393,7 +393,7 @@ function AdminDashboard() {
               )}
             </section>
 
-            <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <aside className="food-card p-5">
               <ActivityPanel
                 activeSection={activeSection}
                 selectedCustomer={selectedCustomer}
@@ -430,12 +430,12 @@ function CustomerTable({
   selectedId?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="food-card overflow-hidden">
       <TableHeader title="Customers" count={customers.length} />
       {customers.length === 0 ? (
         <EmptyState text="No customers found." />
       ) : (
-        <table className="w-full text-left text-sm">
+        <table className="food-table text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3">Name</th>
@@ -501,12 +501,12 @@ function OwnerTable({
   selectedId?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="food-card overflow-hidden">
       <TableHeader title="Restaurant Owners" count={owners.length} />
       {owners.length === 0 ? (
         <EmptyState text="No restaurant owners found." />
       ) : (
-        <table className="w-full text-left text-sm">
+        <table className="food-table text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3">Owner</th>
@@ -572,12 +572,12 @@ function RiderTable({
   formatStatus: (status?: string | null) => string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="food-card overflow-hidden">
       <TableHeader title="Riders" count={riders.length} />
       {riders.length === 0 ? (
         <EmptyState text="No riders found." />
       ) : (
-        <table className="w-full text-left text-sm">
+        <table className="food-table text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3">Rider</th>
@@ -675,12 +675,12 @@ function RestaurantTable({
   formatStatus: (status?: string | null) => string;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="food-card overflow-hidden">
       <TableHeader title="Restaurants" count={restaurants.length} />
       {restaurants.length === 0 ? (
         <EmptyState text="No restaurants found." />
       ) : (
-        <table className="w-full text-left text-sm">
+        <table className="food-table text-left text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th className="px-4 py-3">Restaurant</th>
@@ -874,7 +874,7 @@ function OrderActivityList({
       {activities.map((order) => (
         <article
           key={order.id}
-          className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+          className="rounded-xl border border-emerald-100 bg-emerald-50/45 p-4"
         >
           <div className="flex flex-wrap justify-between gap-3">
             <div>
@@ -934,7 +934,7 @@ function DeliveryActivityList({
       {activities.map((activity) => (
         <article
           key={activity.id}
-          className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+          className="rounded-xl border border-emerald-100 bg-emerald-50/45 p-4"
         >
           <div className="flex flex-wrap justify-between gap-3">
             <div>

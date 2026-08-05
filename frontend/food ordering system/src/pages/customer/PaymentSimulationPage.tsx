@@ -12,6 +12,7 @@ import {
 import {
   placeOrder,
   type Order,
+  type PaymentMethod,
 } from "../../services/OrderService";
 
 import {
@@ -44,6 +45,18 @@ function PaymentSimulationPage() {
     completedOrder,
     setCompletedOrder,
   ] = useState<Order | null>(null);
+
+  const [
+    paymentMethod,
+    setPaymentMethod,
+  ] = useState<PaymentMethod>(
+    "CASH_ON_DELIVERY"
+  );
+
+  const [
+    mpesaPhoneNumber,
+    setMpesaPhoneNumber,
+  ] = useState("");
 
   const deliveryAddress =
     sessionStorage.getItem(
@@ -98,6 +111,17 @@ function PaymentSimulationPage() {
         setProcessing(true);
         setError("");
 
+        if (
+          paymentMethod === "MPESA"
+          && !mpesaPhoneNumber.trim()
+        ) {
+          setError(
+            "Enter the M-Pesa phone number that will receive the STK push."
+          );
+          setProcessing(false);
+          return;
+        }
+
         const order =
           await placeOrder({
             deliveryAddress,
@@ -109,6 +133,11 @@ function PaymentSimulationPage() {
               hasDeliveryCoordinates
                 ? deliveryLongitude
                 : null,
+            paymentMethod,
+            mpesaPhoneNumber:
+              paymentMethod === "MPESA"
+                ? mpesaPhoneNumber.trim()
+                : undefined,
           });
 
         setCompletedOrder(
@@ -175,11 +204,11 @@ function PaymentSimulationPage() {
           </div>
 
           <h1 className="mt-5 text-2xl font-bold text-slate-950">
-            Payment successful
+            Order received
           </h1>
 
           <p className="mt-2 text-slate-500">
-            Your order has been placed successfully.
+            Your order has been placed and payment is being tracked.
           </p>
 
           <div className="mt-6 rounded-2xl bg-slate-50 p-5 text-left">
@@ -190,6 +219,43 @@ function PaymentSimulationPage() {
 
             <p className="font-semibold text-slate-900">
               {completedOrder.restaurantName}
+            </p>
+
+            <p className="mt-4 text-sm text-slate-500">
+              Payment method
+            </p>
+
+            <p className="font-semibold text-slate-900">
+              {completedOrder.paymentMethod.replaceAll(
+                "_",
+                " "
+              )}
+            </p>
+
+            <p className="mt-4 text-sm text-slate-500">
+              Payment status
+            </p>
+
+            <p className="font-semibold text-slate-900">
+              {completedOrder.paymentStatus}
+            </p>
+
+            <p className="mt-4 text-sm text-slate-500">
+              Subtotal
+            </p>
+
+            <p className="font-semibold text-slate-900">
+              KES {completedOrder.subtotalAmount}
+            </p>
+
+            <p className="mt-4 text-sm text-slate-500">
+              Delivery + service
+            </p>
+
+            <p className="font-semibold text-slate-900">
+              KES{" "}
+              {completedOrder.deliveryFee
+                + completedOrder.serviceFee}
             </p>
 
             <p className="mt-4 text-sm text-slate-500">
@@ -287,9 +353,76 @@ function PaymentSimulationPage() {
           </div>
 
           <p className="mt-6 text-sm text-slate-500">
-            This is a simulated payment for development purposes.
-            No real money will be charged.
+            Choose how the order should be paid. M-Pesa requires
+            your Daraja credentials in the backend local config
+            before it can contact Safaricom.
           </p>
+
+          <div className="mt-5 grid gap-3">
+            {[
+              {
+                value: "CASH_ON_DELIVERY",
+                label: "Cash on delivery",
+                text: "Accept the order now and collect payment at delivery.",
+              },
+              {
+                value: "MPESA",
+                label: "M-Pesa",
+                text: "Send a Daraja STK push to the customer phone.",
+              },
+            ].map((method) => (
+              <label
+                key={method.value}
+                className={`cursor-pointer rounded-2xl border p-4 ${
+                  paymentMethod === method.value
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <span className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value={method.value}
+                    checked={paymentMethod === method.value}
+                    onChange={() =>
+                      setPaymentMethod(
+                        method.value as PaymentMethod
+                      )
+                    }
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-semibold text-slate-900">
+                      {method.label}
+                    </span>
+                    <span className="mt-1 block text-sm text-slate-500">
+                      {method.text}
+                    </span>
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {paymentMethod === "MPESA" && (
+            <label className="mt-5 block">
+              <span className="text-sm font-medium text-slate-700">
+                M-Pesa phone number
+              </span>
+              <input
+                type="tel"
+                value={mpesaPhoneNumber}
+                onChange={(event) =>
+                  setMpesaPhoneNumber(
+                    event.target.value
+                  )
+                }
+                placeholder="2547XXXXXXXX"
+                className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              />
+            </label>
+          )}
 
           <button
             type="button"
@@ -299,7 +432,9 @@ function PaymentSimulationPage() {
           >
             {processing
               ? "Processing payment..."
-              : "Pay now"}
+              : paymentMethod === "MPESA"
+                ? "Send M-Pesa STK push"
+                : "Place order"}
           </button>
 
         </section>

@@ -12,6 +12,10 @@ export type OrderStatus =
   | "DELIVERED"
   | "CANCELLED";
 
+export type PaymentMethod =
+  | "MPESA"
+  | "CASH_ON_DELIVERY";
+
 export interface OrderItem {
   id: string;
   menuItemId: string | null;
@@ -39,10 +43,16 @@ export interface Order {
   status: OrderStatus;
 
   paymentStatus: string;
+  paymentMethod: PaymentMethod;
   paymentReference?: string | null;
   cancellationReason?: string | null;
   cancelledAt?: string | null;
 
+  subtotalAmount: number;
+  deliveryFee: number;
+  serviceFee: number;
+  taxAmount: number;
+  discountAmount: number;
   totalAmount: number;
 
   items: OrderItem[];
@@ -55,6 +65,8 @@ export interface PlaceOrderRequest {
   deliveryAddress: string;
   deliveryLatitude?: number | null;
   deliveryLongitude?: number | null;
+  paymentMethod?: PaymentMethod;
+  mpesaPhoneNumber?: string;
 }
 
 /*

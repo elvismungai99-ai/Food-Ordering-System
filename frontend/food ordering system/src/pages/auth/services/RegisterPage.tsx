@@ -371,9 +371,9 @@ function RegisterPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+    <main className="food-page flex items-center justify-center p-6">
 
-      <div className="w-full max-w-lg rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="food-card w-full max-w-lg p-8">
 
         {/* HEADER */}
 
@@ -430,7 +430,7 @@ function RegisterPage() {
                 handleChange
               }
               placeholder="Enter your full name"
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             />
 
             {fieldErrors.fullName && (
@@ -466,7 +466,7 @@ function RegisterPage() {
               }
               placeholder="example@email.com"
               autoComplete="email"
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             />
 
             {fieldErrors.email && (
@@ -502,7 +502,7 @@ function RegisterPage() {
               }
               placeholder="0712345678"
               autoComplete="tel"
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             />
 
             {fieldErrors.phoneNumber && (
@@ -535,7 +535,7 @@ function RegisterPage() {
               onChange={
                 handleChange
               }
-              className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             >
 
               <option value="CUSTOMER">
@@ -581,7 +581,7 @@ function RegisterPage() {
               }
               placeholder="Enter your password"
               autoComplete="new-password"
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             />
 
             {fieldErrors.password && (
@@ -617,7 +617,7 @@ function RegisterPage() {
               }
               placeholder="Confirm password"
               autoComplete="new-password"
-              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-500"
+              className="food-input mt-2 w-full px-4 py-3"
             />
 
             {fieldErrors.confirmPassword && (
@@ -637,7 +637,7 @@ function RegisterPage() {
             disabled={
               loading
             }
-            className="w-full rounded-3xl bg-indigo-600 px-6 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="food-button-primary w-full px-6 py-3 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
 
             {loading
@@ -656,7 +656,7 @@ function RegisterPage() {
 
           <Link
             to="/login"
-            className="font-semibold text-indigo-600"
+            className="font-semibold text-emerald-700 hover:text-emerald-900"
           >
             Login
           </Link>

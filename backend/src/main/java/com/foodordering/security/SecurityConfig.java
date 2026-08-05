@@ -92,7 +92,19 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest()
-                        .permitAll()
+                        .hasAuthority("ROLE_SUPER_ADMIN")
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(
+                                restAuthenticationEntryPoint
+                        )
+                        .accessDeniedHandler(
+                                restAccessDeniedHandler
+                        )
+                )
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
                 );
 
         return http.build();
@@ -182,7 +194,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/admin/**"
                         )
-                        .permitAll(
+                        .hasAuthority(
+                                "ROLE_SUPER_ADMIN"
                         )
 
                         // =================================
@@ -200,7 +213,10 @@ public class SecurityConfig {
                                 HttpMethod.GET,
                                 "/api/restaurants/me"
                         )
-                        .permitAll()
+                        .hasAnyAuthority(
+                                "ROLE_OWNER",
+                                "ROLE_SUPER_ADMIN"
+                        )
 
                         /*
                          * Restaurant creation.
@@ -308,7 +324,8 @@ public class SecurityConfig {
                                 "/api/cart",
                                 "/api/cart/**"
                         )
-                        .permitAll(
+                        .hasAuthority(
+                                "ROLE_CUSTOMER"
                         )
 
                         // =================================
@@ -319,7 +336,7 @@ public class SecurityConfig {
                                 "/api/orders",
                                 "/api/orders/**"
                         )
-                        .permitAll(
+                        .authenticated(
                         )
 
                         // =================================

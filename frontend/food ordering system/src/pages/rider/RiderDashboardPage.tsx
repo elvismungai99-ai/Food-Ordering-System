@@ -301,7 +301,7 @@ function RiderDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+      <div className="food-page flex items-center justify-center">
         <p className="text-slate-500">
           Loading rider dashboard...
         </p>
@@ -310,11 +310,11 @@ function RiderDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
+    <main className="food-page p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-950">
+            <h1 className="text-3xl font-black text-slate-950">
               Rider Dashboard
             </h1>
             <p className="mt-2 text-sm text-slate-500">
@@ -328,7 +328,7 @@ function RiderDashboardPage() {
               onClick={() =>
                 navigate("/")
               }
-              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+              className="food-button-secondary px-5 py-2 text-sm"
             >
               Home
             </button>
@@ -336,7 +336,7 @@ function RiderDashboardPage() {
             <button
               type="button"
               onClick={logout}
-              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+              className="food-button-secondary px-5 py-2 text-sm"
             >
               Logout
             </button>
@@ -378,7 +378,7 @@ function RiderDashboardPage() {
               />
             </section>
 
-            <section className="mt-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="food-card mt-8 p-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950">
@@ -401,7 +401,7 @@ function RiderDashboardPage() {
                     className={`rounded-3xl px-5 py-2 text-sm font-semibold ${
                       dashboard.rider.operationalStatus
                       === "OPEN"
-                        ? "bg-green-600 text-white"
+                        ? "bg-emerald-600 text-white"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -429,7 +429,7 @@ function RiderDashboardPage() {
                     onClick={handleOnlineToggle}
                     className={`rounded-3xl px-5 py-2 text-sm font-semibold ${
                       dashboard.rider.online
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-emerald-600 text-white"
                         : "bg-slate-100 text-slate-700"
                     }`}
                   >
@@ -455,7 +455,7 @@ function RiderDashboardPage() {
               </h2>
 
               {dashboard.deliveryRequests.length === 0 ? (
-                <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center text-slate-500">
+                <div className="food-card p-10 text-center text-slate-500">
                   No delivery requests yet.
                 </div>
               ) : (
@@ -546,7 +546,7 @@ function DeliveryRequestCard({
       : null;
 
   return (
-    <article className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+    <article className="food-card food-card-hover p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-950">
@@ -557,7 +557,7 @@ function DeliveryRequestCard({
           </p>
         </div>
 
-        <span className="rounded-full bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-700">
+        <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
           {formatCurrency(request.estimatedPayout)}
         </span>
       </div>
@@ -585,7 +585,7 @@ function DeliveryRequestCard({
             href={customerMapUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-indigo-600"
+            className="rounded-full bg-emerald-50 px-4 py-2 font-semibold text-emerald-700"
           >
             Customer Map
           </a>
@@ -596,7 +596,7 @@ function DeliveryRequestCard({
             href={routeUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-full bg-slate-100 px-4 py-2 font-semibold text-indigo-600"
+            className="rounded-full bg-emerald-50 px-4 py-2 font-semibold text-emerald-700"
           >
             Navigate Route
           </a>
@@ -679,7 +679,7 @@ function ActionButton({
       className={`rounded-3xl px-5 py-2 text-sm font-semibold text-white ${
         tone === "danger"
           ? "bg-red-600"
-          : "bg-indigo-600"
+          : "bg-emerald-600"
       }`}
     >
       {label}
@@ -695,7 +695,7 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="food-card p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>

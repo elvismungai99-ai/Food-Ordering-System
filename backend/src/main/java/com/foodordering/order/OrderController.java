@@ -150,10 +150,17 @@ public class OrderController {
                 authHeader
         );
 
+        UUID ownerId =
+                extractUserId(
+                        authHeader
+                );
+
         return ResponseEntity.ok(
                 orderService
                         .getRestaurantOrders(
-                                restaurantId
+                                ownerId,
+                                restaurantId,
+                                isSuperAdmin(authHeader)
                         )
         );
     }
@@ -179,11 +186,18 @@ public class OrderController {
                 authHeader
         );
 
+        UUID ownerId =
+                extractUserId(
+                        authHeader
+                );
+
         return ResponseEntity.ok(
                 orderService
                         .updateOrderStatus(
+                                ownerId,
                                 orderId,
-                                request.getStatus()
+                                request.getStatus(),
+                                isSuperAdmin(authHeader)
                         )
         );
     }
@@ -363,5 +377,14 @@ public class OrderController {
                 || "RESTAURANT_OWNER".equals(normalized)
                 || "ADMIN_RESTAURANT".equals(normalized)
                 || "SUPER_ADMIN".equals(normalized);
+    }
+
+    private boolean isSuperAdmin(
+            String authHeader
+    ) {
+
+        return "SUPER_ADMIN".equals(
+                extractRole(authHeader)
+        );
     }
 } 

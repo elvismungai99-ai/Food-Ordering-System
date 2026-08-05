@@ -18,18 +18,18 @@ function CustomerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="food-page">
       <CustomerHeader title="Food Ordering" />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <section className="rounded-[28px] bg-slate-950 px-8 py-10 text-white">
+        <section className="overflow-hidden rounded-[32px] bg-slate-950 px-8 py-10 text-white shadow-2xl shadow-slate-900/20">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div>
-              <p className="text-sm font-medium text-indigo-300">
+              <p className="text-sm font-bold uppercase text-emerald-300">
                 Customer dashboard
               </p>
 
-              <h1 className="mt-2 text-4xl font-bold">
+              <h1 className="mt-2 text-4xl font-black">
                 Welcome, {firstName}
               </h1>
 
@@ -55,9 +55,9 @@ function CustomerDashboard() {
             onClick={() =>
               navigate("/customer/restaurants")
             }
-            className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="food-card food-card-hover p-6 text-left"
           >
-            <div className="text-3xl">🍽️</div>
+            <div className="food-badge bg-emerald-100 text-emerald-700">Food</div>
 
             <h2 className="mt-4 text-lg font-semibold text-slate-900">
               Restaurants
@@ -73,9 +73,9 @@ function CustomerDashboard() {
             onClick={() =>
               navigate("/customer/cart")
             }
-            className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="food-card food-card-hover p-6 text-left"
           >
-            <div className="text-3xl">🛒</div>
+            <div className="food-badge bg-amber-100 text-amber-700">Cart</div>
 
             <h2 className="mt-4 text-lg font-semibold text-slate-900">
               Cart
@@ -91,9 +91,9 @@ function CustomerDashboard() {
             onClick={() =>
               navigate("/customer/orders")
             }
-            className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="food-card food-card-hover p-6 text-left"
           >
-            <div className="text-3xl">📦</div>
+            <div className="food-badge bg-sky-100 text-sky-700">Orders</div>
 
             <h2 className="mt-4 text-lg font-semibold text-slate-900">
               Orders
@@ -109,9 +109,9 @@ function CustomerDashboard() {
             onClick={() =>
               navigate("/customer/profile")
             }
-            className="rounded-[24px] border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="food-card food-card-hover p-6 text-left"
           >
-            <div className="text-3xl">👤</div>
+            <div className="food-badge bg-slate-100 text-slate-700">Profile</div>
 
             <h2 className="mt-4 text-lg font-semibold text-slate-900">
               Profile

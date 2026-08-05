@@ -15,6 +15,9 @@ import com.foodordering.order.dto.PlaceOrderRequest;
 
 import com.foodordering.payment.PaymentResult;
 import com.foodordering.payment.PaymentService;
+import com.foodordering.payment.PaymentMethod;
+import com.foodordering.payment.PricingBreakdown;
+import com.foodordering.payment.PricingService;
 
 import com.foodordering.restaurant.Restaurant;
 import com.foodordering.restaurant.RestaurantRepository;
@@ -40,6 +43,7 @@ public class OrderService {
     private final RestaurantRepository restaurantRepository;
     private final RestaurantService restaurantService;
     private final PaymentService paymentService;
+    private final PricingService pricingService;
     private final OrderStateMachine orderStateMachine;
 
     public OrderService(
@@ -49,6 +53,7 @@ public class OrderService {
             RestaurantRepository restaurantRepository,
             RestaurantService restaurantService,
             PaymentService paymentService,
+            PricingService pricingService,
             OrderStateMachine orderStateMachine
     ) {
         this.orderRepository =
@@ -68,6 +73,9 @@ public class OrderService {
 
         this.paymentService =
                 paymentService;
+
+        this.pricingService =
+                pricingService;
 
         this.orderStateMachine =
                 orderStateMachine;
@@ -224,20 +232,33 @@ public class OrderService {
                 menuItems
         );
 
-        BigDecimal orderTotal =
+        BigDecimal orderSubtotal =
                 calculateOrderTotal(
                         cart
                 );
 
+        PricingBreakdown pricingBreakdown =
+                pricingService.calculate(
+                        orderSubtotal
+                );
+
+        PaymentMethod paymentMethod =
+                request.getPaymentMethod() != null
+                        ? request.getPaymentMethod()
+                        : PaymentMethod.CASH_ON_DELIVERY;
+
         /*
-         * Keep your current payment simulation.
-         * M-PESA will replace this later.
+         * Initiate the selected payment method.
+         * M-Pesa stores a provider reference while
+         * its callback can mark the order PAID later.
          */
         PaymentResult paymentResult =
                 paymentService
                         .processPayment(
                                 customerId,
-                                orderTotal
+                                pricingBreakdown.totalAmount(),
+                                paymentMethod,
+                                request.getMpesaPhoneNumber()
                         );
 
         if (
@@ -295,7 +316,7 @@ public class OrderService {
         );
 
         order.setPaymentStatus(
-                PaymentStatus.PAID
+                paymentResult.getPaymentStatus()
         );
 
         order.setPaymentReference(
@@ -304,7 +325,31 @@ public class OrderService {
         );
 
         order.setTotalAmount(
-                orderTotal
+                pricingBreakdown.totalAmount()
+        );
+
+        order.setSubtotalAmount(
+                pricingBreakdown.subtotalAmount()
+        );
+
+        order.setDeliveryFee(
+                pricingBreakdown.deliveryFee()
+        );
+
+        order.setServiceFee(
+                pricingBreakdown.serviceFee()
+        );
+
+        order.setTaxAmount(
+                pricingBreakdown.taxAmount()
+        );
+
+        order.setDiscountAmount(
+                pricingBreakdown.discountAmount()
+        );
+
+        order.setPaymentMethod(
+                paymentMethod
         );
 
         /*
@@ -397,8 +442,10 @@ public class OrderService {
 
     @Transactional
     public OrderDto updateOrderStatus(
+            UUID ownerId,
             UUID orderId,
-            OrderStatus newStatus
+            OrderStatus newStatus,
+            boolean allowAnyRestaurant
     ) {
 
         if (orderId == null) {
@@ -429,6 +476,12 @@ public class OrderService {
                                         "Order not found"
                                 )
                         );
+
+        requireRestaurantOwnership(
+                ownerId,
+                order.getRestaurantId(),
+                allowAnyRestaurant
+        );
 
         orderStateMachine
                 .validateTransition(
@@ -599,7 +652,9 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<OrderDto> getRestaurantOrders(
-            UUID restaurantId
+            UUID ownerId,
+            UUID restaurantId,
+            boolean allowAnyRestaurant
     ) {
 
         if (
@@ -610,8 +665,14 @@ public class OrderService {
         ) {
             throw new ResourceNotFoundException(
                     "Restaurant not found"
-            );
+                );
         }
+
+        requireRestaurantOwnership(
+                ownerId,
+                restaurantId,
+                allowAnyRestaurant
+        );
 
         return orderRepository
                 .findByRestaurantIdOrderByCreatedAtDesc(
@@ -620,6 +681,41 @@ public class OrderService {
                 .stream()
                 .map(OrderDto::new)
                 .toList();
+    }
+
+    private void requireRestaurantOwnership(
+            UUID ownerId,
+            UUID restaurantId,
+            boolean allowAnyRestaurant
+    ) {
+
+        if (allowAnyRestaurant) {
+            return;
+        }
+
+        if (ownerId == null || restaurantId == null) {
+            throw new BusinessRuleException(
+                    "Restaurant ownership could not be verified"
+            );
+        }
+
+        Restaurant restaurant =
+                restaurantRepository
+                        .findById(restaurantId)
+                        .orElseThrow(() ->
+                                new ResourceNotFoundException(
+                                        "Restaurant not found"
+                                )
+                        );
+
+        if (
+                restaurant.getOwnerId() == null
+                || !restaurant.getOwnerId().equals(ownerId)
+        ) {
+            throw new BusinessRuleException(
+                    "You can access only orders for your own restaurant"
+            );
+        }
     }
 
     // =========================================================

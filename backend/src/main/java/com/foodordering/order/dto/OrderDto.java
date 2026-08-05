@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.foodordering.order.Order;
 import com.foodordering.order.OrderStatus;
 import com.foodordering.order.PaymentStatus;
+import com.foodordering.payment.PaymentMethod;
 
 public class OrderDto {
 
@@ -21,11 +22,17 @@ public class OrderDto {
 
     private PaymentStatus paymentStatus;
     private String paymentReference;
+    private PaymentMethod paymentMethod;
     private String cancellationReason;
     private String cancelledAt;
 
     private OrderStatus status;
     private BigDecimal totalAmount;
+    private BigDecimal subtotalAmount;
+    private BigDecimal deliveryFee;
+    private BigDecimal serviceFee;
+    private BigDecimal taxAmount;
+    private BigDecimal discountAmount;
 
     private List<OrderItemDto> items;
 
@@ -56,6 +63,16 @@ public class OrderDto {
         this.status = order.getStatus();
         this.totalAmount =
                 order.getTotalAmount();
+        this.subtotalAmount =
+                order.getSubtotalAmount();
+        this.deliveryFee =
+                order.getDeliveryFee();
+        this.serviceFee =
+                order.getServiceFee();
+        this.taxAmount =
+                order.getTaxAmount();
+        this.discountAmount =
+                order.getDiscountAmount();
 
         this.items = order.getItems()
                 .stream()
@@ -71,6 +88,7 @@ public class OrderDto {
 
         this.paymentStatus = order.getPaymentStatus();
         this.paymentReference = order.getPaymentReference();
+        this.paymentMethod = order.getPaymentMethod();
         this.cancellationReason = order.getCancellationReason();
         this.cancelledAt = order.getCancelledAt() != null
                 ? order.getCancelledAt().toString()
@@ -129,8 +147,32 @@ public class OrderDto {
         return paymentStatus;
     }
 
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
+    }
+
     public String getPaymentReference() {
         return paymentReference;
+    }
+
+    public BigDecimal getSubtotalAmount() {
+        return subtotalAmount;
+    }
+
+    public BigDecimal getDeliveryFee() {
+        return deliveryFee;
+    }
+
+    public BigDecimal getServiceFee() {
+        return serviceFee;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
     }
 
     public String getCancellationReason() {
