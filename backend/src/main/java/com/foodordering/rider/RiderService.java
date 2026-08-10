@@ -432,7 +432,11 @@ public class RiderService {
                                 true
                         )
                         .stream()
-                        .filter(this::hasCurrentLocation)
+                        .filter(rider ->
+                                !hasActiveDeliveryRequestForRider(
+                                        rider.getId()
+                                )
+                        )
                         .map(rider ->
                                 buildRiderMatch(
                                         rider,
@@ -440,21 +444,25 @@ public class RiderService {
                                         request.getRestaurantLongitude()
                                 )
                         )
-                        .filter(match ->
-                                match.distanceKm() != null
-                        )
                         .min(
                                 Comparator
                                         .comparing(
+                                                RiderMatch::hasCurrentLocation
+                                        )
+                                        .reversed()
+                                        .thenComparing(
                                                 RiderMatch::score
                                         )
                                         .thenComparing(
-                                                RiderMatch::distanceKm
+                                                RiderMatch::distanceKm,
+                                                Comparator.nullsLast(
+                                                        Comparator.naturalOrder()
+                                                )
                                         )
                         )
                         .orElseThrow(() ->
                                 new BusinessRuleException(
-                                        "No online riders with current location are available"
+                                        "No online riders are available for automatic assignment"
                                 )
                         );
 
@@ -813,11 +821,28 @@ public class RiderService {
         return deliveryRequestRepository
                 .existsByOrderIdAndStatusNotIn(
                         orderId,
-                        List.of(
-                                DeliveryRequestStatus.REJECTED,
-                                DeliveryRequestStatus.CANCELLED
-                        )
+                        inactiveDeliveryStatuses()
                 );
+    }
+
+    private boolean hasActiveDeliveryRequestForRider(
+            UUID riderId
+    ) {
+
+        return deliveryRequestRepository
+                .existsByRiderIdAndStatusNotIn(
+                        riderId,
+                        inactiveDeliveryStatuses()
+                );
+    }
+
+    private List<DeliveryRequestStatus> inactiveDeliveryStatuses() {
+
+        return List.of(
+                DeliveryRequestStatus.REJECTED,
+                DeliveryRequestStatus.CANCELLED,
+                DeliveryRequestStatus.DELIVERED
+        );
     }
 
     private RiderMatch buildRiderMatch(
@@ -847,7 +872,8 @@ public class RiderService {
         return new RiderMatch(
                 rider,
                 distanceKm,
-                score
+                score,
+                hasCurrentLocation(rider)
         );
     }
 
@@ -946,7 +972,8 @@ public class RiderService {
     private record RiderMatch(
             Rider rider,
             BigDecimal distanceKm,
-            BigDecimal score
+            BigDecimal score,
+            boolean hasCurrentLocation
     ) {
     }
 }

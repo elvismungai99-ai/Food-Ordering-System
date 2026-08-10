@@ -30,4 +30,8 @@ public interface OrderRepository
             UUID orderId,
             UUID customerId
     );
+
+    Optional<Order> findByPaymentReference(
+            String paymentReference
+    );
 }

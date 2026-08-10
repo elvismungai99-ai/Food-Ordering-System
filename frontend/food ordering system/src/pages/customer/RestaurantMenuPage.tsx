@@ -24,6 +24,7 @@ import {
 } from "../../context/CartContext";
 
 import {
+  getRestaurantReviews,
   getMenuItemReviews,
   type Review,
 } from "../../services/ReviewService";
@@ -72,9 +73,19 @@ function RestaurantMenuPage() {
   ] = useState<Record<string, Review[]>>({});
 
   const [
+    restaurantReviews,
+    setRestaurantReviews,
+  ] = useState<Review[]>([]);
+
+  const [
     loadingReviewsItemId,
     setLoadingReviewsItemId,
   ] = useState<string | null>(null);
+
+  const [
+    loadingRestaurantReviews,
+    setLoadingRestaurantReviews,
+  ] = useState(false);
 
   useEffect(() => {
     const loadMenu = async () => {
@@ -104,6 +115,26 @@ function RestaurantMenuPage() {
           );
 
         setMenuItems(menuData);
+
+        try {
+          setLoadingRestaurantReviews(true);
+
+          const reviewsData =
+            await getRestaurantReviews(
+              restaurantId
+            );
+
+          setRestaurantReviews(reviewsData);
+        } catch (reviewError) {
+          console.error(
+            "Failed to load restaurant reviews:",
+            reviewError
+          );
+
+          setRestaurantReviews([]);
+        } finally {
+          setLoadingRestaurantReviews(false);
+        }
       } catch (requestError) {
         console.error(
           "Failed to load restaurant menu:",
@@ -321,6 +352,59 @@ function RestaurantMenuPage() {
             {successMessage}
           </div>
         )}
+
+        <section className="mb-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-950">
+                Restaurant Reviews
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                See what customers say about this restaurant.
+              </p>
+            </div>
+
+            {restaurantReviews.length > 0 && (
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                {restaurantReviews.length} review{restaurantReviews.length === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+
+          {loadingRestaurantReviews ? (
+            <p className="mt-4 text-sm text-slate-500">
+              Loading restaurant reviews...
+            </p>
+          ) : restaurantReviews.length > 0 ? (
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {restaurantReviews.slice(0, 4).map((review) => (
+                <article
+                  key={review.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-800">
+                      {review.rating} / 5
+                    </span>
+
+                    <span className="text-xs text-slate-400">
+                      {formatReviewDate(review.createdAt)}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-sm text-slate-600">
+                    {review.comment || "No comment provided."}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">
+              No restaurant reviews yet.
+            </p>
+          )}
+        </section>
 
         {menuItems.length === 0 ? (
           <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center">

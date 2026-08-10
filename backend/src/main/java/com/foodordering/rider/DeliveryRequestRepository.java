@@ -18,6 +18,11 @@ public interface DeliveryRequestRepository
             Collection<DeliveryRequestStatus> statuses
     );
 
+    boolean existsByRiderIdAndStatusNotIn(
+            UUID riderId,
+            Collection<DeliveryRequestStatus> statuses
+    );
+
     @EntityGraph(attributePaths = {})
     List<DeliveryRequest> findByRiderIdOrderByRequestedAtDesc(UUID riderId);
 

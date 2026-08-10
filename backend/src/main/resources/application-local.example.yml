@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/Food_Ordering_db
+    username: food_user
+    password: change_this_password
+
+jwt:
+  secret: change_this_to_a_long_random_secret
+
+payments:
+  mpesa:
+    enabled: true
+    environment: sandbox
+    consumer-key: your_daraja_consumer_key
+    consumer-secret: your_daraja_consumer_secret
+    shortcode: your_paybill_or_till_shortcode
+    passkey: your_daraja_passkey
+    callback-url: https://your-public-domain.com/api/payments/mpesa/callback

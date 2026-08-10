@@ -3,10 +3,13 @@ package com.foodordering.payment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.foodordering.common.exception.BusinessRuleException;
+import com.foodordering.order.Order;
+import com.foodordering.order.OrderRepository;
 import com.foodordering.order.PaymentStatus;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,6 +29,7 @@ import static java.util.Map.entry;
 public class PaymentService {
 
     private final ObjectMapper objectMapper;
+    private final OrderRepository orderRepository;
     private final HttpClient httpClient =
             HttpClient.newHttpClient();
 
@@ -39,6 +43,7 @@ public class PaymentService {
 
     public PaymentService(
             ObjectMapper objectMapper,
+            OrderRepository orderRepository,
             @Value("${payments.mpesa.enabled:false}")
             boolean mpesaEnabled,
             @Value("${payments.mpesa.environment:sandbox}")
@@ -56,6 +61,8 @@ public class PaymentService {
     ) {
         this.objectMapper =
                 objectMapper;
+        this.orderRepository =
+                orderRepository;
         this.mpesaEnabled =
                 mpesaEnabled;
         this.mpesaEnvironment =
@@ -127,6 +134,51 @@ public class PaymentService {
                             PaymentStatus.PENDING
                     );
         };
+    }
+
+    @Transactional
+    public void handleMpesaCallback(
+            MpesaCallbackRequest request
+    ) {
+
+        MpesaCallbackRequest.StkCallback callback =
+                request != null
+                        ? request.getStkCallback()
+                        : null;
+
+        if (
+                callback == null
+                || callback.getCheckoutRequestId() == null
+                || callback
+                        .getCheckoutRequestId()
+                        .isBlank()
+        ) {
+            throw new BusinessRuleException(
+                    "Invalid M-Pesa callback payload"
+            );
+        }
+
+        Order order =
+                orderRepository
+                        .findByPaymentReference(
+                                callback
+                                        .getCheckoutRequestId()
+                        )
+                        .orElseThrow(() ->
+                                new BusinessRuleException(
+                                        "Order not found for M-Pesa callback"
+                                )
+                        );
+
+        order.setPaymentStatus(
+                callback.isSuccessful()
+                        ? PaymentStatus.PAID
+                        : PaymentStatus.FAILED
+        );
+
+        orderRepository.save(
+                order
+        );
     }
 
     private PaymentResult initiateMpesaPayment(

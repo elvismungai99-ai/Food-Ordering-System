@@ -183,6 +183,12 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/payments/mpesa/callback"
+                        )
+                        .permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
                                 "/api/riders/register"
                         )
                         .permitAll()
