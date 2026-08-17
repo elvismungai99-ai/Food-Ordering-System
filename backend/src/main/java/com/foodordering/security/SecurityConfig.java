@@ -1,7 +1,9 @@
 package com.foodordering.security;
 
+import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +37,21 @@ public class SecurityConfig {
 
     private final RestAccessDeniedHandler
             restAccessDeniedHandler;
+
+    /*
+     * Comma-separated list of origin PATTERNS allowed to call this API.
+     *
+     * Defaults to the local Vite dev servers plus the deployed Vercel
+     * frontend (both the stable production URL and a wildcard pattern
+     * that matches every Vercel preview deployment, since each new
+     * deploy gets a unique hash in the subdomain, e.g.
+     * food-ordering-system-j7iwdncnx-elvis-3170.vercel.app).
+     *
+     * Override at runtime via the `CORS_ALLOWED_ORIGINS` environment
+     * variable if these ever change.
+     */
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,https://food-ordering-system-elvis-3170.vercel.app,https://food-ordering-system-*-elvis-3170.vercel.app}")
+    private String allowedOrigins;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
@@ -418,13 +435,25 @@ public class SecurityConfig {
                 new CorsConfiguration();
 
         /*
-         * React/Vite development frontend.
+         * React/Vite development frontend by default;
+         * the deployed Vercel origin(s) are added through the
+         * `CORS_ALLOWED_ORIGINS` environment variable.
+         *
+         * Uses origin PATTERNS (not exact origins) so the
+         * wildcard "https://food-ordering-system-*-elvis-3170.vercel.app"
+         * matches every Vercel preview deployment URL, since each
+         * new deploy gets a unique hash in the subdomain.
          */
-        configuration.setAllowedOrigins(
-                List.of(
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173"
+        configuration.setAllowedOriginPatterns(
+                Arrays.stream(
+                        allowedOrigins.split(",")
                 )
+                .map(String::trim)
+                .filter(
+                        origin ->
+                                !origin.isEmpty()
+                )
+                .toList()
         );
 
         configuration.setAllowedMethods(
