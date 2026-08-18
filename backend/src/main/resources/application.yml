@@ -31,9 +31,10 @@ app:
   mail:
     from: no-reply@foodordering.local
 
-openrouteservice:
-  base-url: https://api.openrouteservice.org
-  api-key: ${ORS_API_KEY:}
+google:
+  maps:
+    base-url: https://maps.googleapis.com
+    api-key: ${GOOGLE_MAPS_API_KEY:}
 
 payments:
   pricing:
@@ -53,3 +54,5 @@ payments:
 security:
   rate-limit:
     ignore-localhost: false
+
+

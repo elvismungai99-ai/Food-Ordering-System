@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/Food_Ordering_db
+    username: food_user
+    password: foodie123
+
+jwt:
+  secret: 8uHTl0pxgrpu3yhbnUereJ230A3clmjJubWUX0ZnuF1wvc+mqBdqxcMLdKPlVSUvrnCVmh/YO3nUqB7+lUtkEw==
+
+payments:
+  mpesa:
+    enabled: true
+    environment: sandbox
+    consumer-key: 6fnJVaJ6wMwP7Jgo6BLqFkFEAop8mayD5R9plpGNyzDW0pMX
+    consumer-secret: 8jGFmPAVcHKCyKRBx7DcQ2lkje8RG5IrdAX5LYGVjWOCaRkOp2CIerGdY45DfIKn
+    shortcode: 174379
+    passkey: bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919
+    callback-url: https://your-public-domain.com/api/payments/mpesa/callback

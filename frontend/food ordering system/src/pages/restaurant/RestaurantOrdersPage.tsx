@@ -23,7 +23,7 @@ import {
 } from "../../services/RestaurantService";
 
 import {
-  buildOpenRouteServiceMapUrl,
+  buildGoogleMapsPlaceUrl,
 } from "../../utils/location";
 
 import {
@@ -496,7 +496,7 @@ function RestaurantOrdersPage() {
       return null;
     }
 
-    return buildOpenRouteServiceMapUrl(
+    return buildGoogleMapsPlaceUrl(
       order.deliveryLatitude,
       order.deliveryLongitude
     );
@@ -885,3 +885,4 @@ function RestaurantOrdersPage() {
 }
 
 export default RestaurantOrdersPage;
+

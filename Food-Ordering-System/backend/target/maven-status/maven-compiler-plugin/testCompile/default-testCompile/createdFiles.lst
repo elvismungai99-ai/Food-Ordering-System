@@ -1,0 +1,5 @@
+com\foodordering\order\FullOrderFlowIntegrationTest.class
+com\foodordering\security\ratelimit\LoginRateLimitFilterTest.class
+com\foodordering\backend\BackendApplicationTests.class
+com\foodordering\order\FullOrderFlowIntegrationTest$AuthSession.class
+com\foodordering\backend\HashGenerator.class

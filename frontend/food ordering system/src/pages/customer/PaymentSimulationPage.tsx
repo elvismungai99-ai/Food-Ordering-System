@@ -20,7 +20,7 @@ import {
 } from "../../context/CartContext";
 
 import {
-  buildOpenRouteServiceMapUrl,
+  buildGoogleMapsPlaceUrl,
 } from "../../utils/location";
 
 function PaymentSimulationPage() {
@@ -338,7 +338,7 @@ function PaymentSimulationPage() {
 
             {hasDeliveryCoordinates && (
               <a
-                href={buildOpenRouteServiceMapUrl(
+                href={buildGoogleMapsPlaceUrl(
                   deliveryLatitude,
                   deliveryLongitude
                 )}
@@ -445,3 +445,4 @@ function PaymentSimulationPage() {
 }
 
 export default PaymentSimulationPage;
+

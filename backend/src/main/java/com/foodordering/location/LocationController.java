@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/location")
 public class LocationController {
 
-    private final OpenRouteServiceLocationService locationService;
+    private final GoogleMapsLocationService locationService;
 
     public LocationController(
-            OpenRouteServiceLocationService locationService
+            GoogleMapsLocationService locationService
     ) {
 
         this.locationService =
@@ -33,3 +33,4 @@ public class LocationController {
         );
     }
 }
+

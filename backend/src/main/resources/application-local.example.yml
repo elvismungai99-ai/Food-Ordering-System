@@ -16,3 +16,8 @@ payments:
     shortcode: your_paybill_or_till_shortcode
     passkey: your_daraja_passkey
     callback-url: https://your-public-domain.com/api/payments/mpesa/callback
+
+google:
+  maps:
+    api-key: your_google_maps_api_key
+

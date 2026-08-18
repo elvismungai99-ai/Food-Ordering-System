@@ -20,7 +20,7 @@ import {
 } from "../../services/ReviewService";
 
 import {
-  buildOpenRouteServiceMapUrl,
+  buildGoogleMapsPlaceUrl,
 } from "../../utils/location";
 
 function OrderDetailPage() {
@@ -297,7 +297,7 @@ function OrderDetailPage() {
   const mapUrl =
     order.deliveryLatitude != null
     && order.deliveryLongitude != null
-      ? buildOpenRouteServiceMapUrl(
+      ? buildGoogleMapsPlaceUrl(
           order.deliveryLatitude,
           order.deliveryLongitude
         )
@@ -738,3 +738,4 @@ function OrderDetailPage() {
 }
 
 export default OrderDetailPage;
+

@@ -22,8 +22,8 @@ import {
 } from "../../services/RiderService";
 
 import {
-  buildOpenRouteServiceMapUrl,
-  buildOpenRouteServiceRouteUrl,
+  buildGoogleMapsPlaceUrl,
+  buildGoogleMapsRouteUrl,
 } from "../../utils/location";
 
 import {
@@ -526,7 +526,7 @@ function DeliveryRequestCard({
   const customerMapUrl =
     request.customerLatitude != null
     && request.customerLongitude != null
-      ? buildOpenRouteServiceMapUrl(
+      ? buildGoogleMapsPlaceUrl(
           request.customerLatitude,
           request.customerLongitude
         )
@@ -537,7 +537,7 @@ function DeliveryRequestCard({
     && request.restaurantLongitude != null
     && request.customerLatitude != null
     && request.customerLongitude != null
-      ? buildOpenRouteServiceRouteUrl(
+      ? buildGoogleMapsRouteUrl(
           request.restaurantLatitude,
           request.restaurantLongitude,
           request.customerLatitude,
@@ -707,3 +707,4 @@ function MetricCard({
 }
 
 export default RiderDashboardPage;
+
