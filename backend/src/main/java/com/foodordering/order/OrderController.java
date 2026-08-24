@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.foodordering.order.dto.OrderDto;
 import com.foodordering.order.dto.CancelOrderRequest;
+import com.foodordering.order.dto.OrderTrackingDto;
 import com.foodordering.order.dto.PlaceOrderRequest;
 import com.foodordering.order.dto.UpdateOrderStatusRequest;
 import com.foodordering.common.exception.ForbiddenOperationException;
@@ -30,15 +31,20 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-    private final OrderService orderService;
+        private final OrderService orderService;
+    private final OrderTrackingService orderTrackingService;
     private final JwtUtil jwtUtil;
 
     public OrderController(
             OrderService orderService,
+            OrderTrackingService orderTrackingService,
             JwtUtil jwtUtil
     ) {
         this.orderService =
                 orderService;
+
+        this.orderTrackingService =
+                orderTrackingService;
 
         this.jwtUtil =
                 jwtUtil;
@@ -127,6 +133,35 @@ public class OrderController {
         return ResponseEntity.ok(
                 orderService
                         .getCustomerOrder(
+                                customerId,
+                                orderId
+                        )
+        );
+    }
+
+        @GetMapping("/{orderId}/tracking")
+    public ResponseEntity<OrderTrackingDto>
+    getOrderTracking(
+
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @PathVariable
+            UUID orderId
+    ) {
+
+        UUID customerId =
+                extractUserId(
+                        authHeader
+                );
+
+        requireCustomer(
+                authHeader
+        );
+
+        return ResponseEntity.ok(
+                orderTrackingService
+                        .getTracking(
                                 customerId,
                                 orderId
                         )

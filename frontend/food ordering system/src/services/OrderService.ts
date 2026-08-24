@@ -167,6 +167,73 @@ export async function updateOrderStatus(
   );
 }
 
+/*
+ * Live tracking snapshot returned by:
+ * GET /api/orders/{orderId}/tracking
+ */
+export interface OrderTracking {
+  orderId: string;
+  status: OrderStatus;
+
+  restaurantName: string;
+  restaurantLatitude?: number | null;
+  restaurantLongitude?: number | null;
+
+  destinationLatitude?: number | null;
+  destinationLongitude?: number | null;
+
+  riderAssigned: boolean;
+  riderId?: string | null;
+  riderName?: string | null;
+  riderPhoneNumber?: string | null;
+  vehicleType?: VehicleType | null;
+  licencePlate?: string | null;
+
+  riderLatitude?: number | null;
+  riderLongitude?: number | null;
+  riderLocationUpdatedAt?: string | null;
+
+  deliveryStatus?: DeliveryRequestStatus | null;
+  requestedAt?: string | null;
+  pickedUpAt?: string | null;
+  deliveredAt?: string | null;
+}
+
+type VehicleType =
+  | "BICYCLE"
+  | "MOTORCYCLE"
+  | "CAR";
+
+type DeliveryRequestStatus =
+  | "REQUESTED"
+  | "ACCEPTED"
+  | "REJECTED"
+  | "ARRIVED_AT_RESTAURANT"
+  | "PICKED_UP"
+  | "DELIVERED"
+  | "CANCELLED";
+
+/*
+ * Customer:
+ * Get the live tracking snapshot for one
+ * specific order (status, restaurant pickup
+ * point, destination and the assigned
+ * rider's most recent GPS position).
+ *
+ * Backend:
+ * GET /api/orders/{orderId}/tracking
+ */
+export async function getOrderTracking(
+  orderId: string
+): Promise<OrderTracking> {
+  return requestData(
+    () => api.get<OrderTracking>(
+      `/orders/${orderId}/tracking`
+    ),
+    "Unable to load live tracking."
+  );
+}
+
 export async function cancelCustomerOrder(
   orderId: string,
   reason: string

@@ -37,8 +37,16 @@ public interface DeliveryRequestRepository
             UUID restaurantId
     );
 
-    long countByRiderIdAndStatus(
+        long countByRiderIdAndStatus(
             UUID riderId,
             DeliveryRequestStatus status
     );
+
+    /*
+     * Live tracking:
+     * orderId is unique on delivery_requests,
+     * so this returns the single delivery
+     * request created for an order.
+     */
+    Optional<DeliveryRequest> findByOrderId(UUID orderId);
 }
