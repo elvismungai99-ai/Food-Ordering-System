@@ -29,6 +29,11 @@ import {
   type Review,
 } from "../../services/ReviewService";
 
+import {
+  CustomizeItemModal,
+  type CustomizationOption,
+} from "../../components/customer/CustomizeItemModal";
+
 function RestaurantMenuPage() {
   const navigate = useNavigate();
 
@@ -61,6 +66,9 @@ function RestaurantMenuPage() {
     addingItemId,
     setAddingItemId,
   ] = useState<string | null>(null);
+
+  const [customizingItem, setCustomizingItem] =
+    useState<MenuItem | null>(null);
 
   const [
     expandedReviewItemId,
@@ -179,31 +187,34 @@ function RestaurantMenuPage() {
       );
     }, [menuItems]);
 
-  const handleAddToCart = async (
-    menuItem: MenuItem
-  ) => {
-    if (
-      !menuItem.available
-      || restaurant?.openNow === false
-    ) {
+  const handleOpenCustomize = (menuItem: MenuItem) => {
+    if (!menuItem.available || restaurant?.openNow === false) {
       return;
     }
+    setCustomizingItem(menuItem);
+  };
 
+  const handleAddToCartWithCustomization = async (
+    menuItem: MenuItem,
+    customization: CustomizationOption
+  ) => {
     try {
-      setAddingItemId(
-        menuItem.id
-      );
-
+      setAddingItemId(menuItem.id);
       setError("");
       setSuccessMessage("");
 
-      await addToCart(
-        menuItem.id,
-        1
-      );
+      await addToCart({
+        menuItemId: menuItem.id,
+        quantity: customization.quantity,
+        selectedSize: customization.size,
+        selectedAddOns: customization.addOns,
+        removalRequests: customization.removalRequests,
+        specialInstructions: customization.specialInstructions,
+        extraPrice: customization.extraPrice,
+      });
 
       setSuccessMessage(
-        `${menuItem.name} added to cart.`
+        `${menuItem.name} (${customization.size || "Regular"}) added to cart.`
       );
     } catch (requestError) {
       console.error(
@@ -302,7 +313,7 @@ function RestaurantMenuPage() {
             </h1>
 
             <p className="mt-2 text-slate-500">
-              Browse available items and add them to your cart.
+              Browse available items and customize them for your taste.
             </p>
 
             {restaurant && (
@@ -322,7 +333,7 @@ function RestaurantMenuPage() {
                   "/customer/restaurants"
                 )
               }
-              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               ← Restaurants
             </button>
@@ -334,7 +345,7 @@ function RestaurantMenuPage() {
                   "/customer/cart"
                 )
               }
-              className="rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white"
+              className="rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 transition"
             >
               View Cart
             </button>
@@ -430,12 +441,8 @@ function RestaurantMenuPage() {
                           key={
                             menuItem.id
                           }
-                          className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm"
+                          className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm flex flex-col justify-between"
                         >
-                          {/*
-                           * The imageUrl returned by the API is
-                           * passed into the reusable image component.
-                           */}
                           <CustomerMenuItemImage
                             imageUrl={
                               menuItem.imageUrl
@@ -445,141 +452,140 @@ function RestaurantMenuPage() {
                             }
                           />
 
-                          <div className="p-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <h3 className="text-lg font-semibold text-slate-900">
-                                  {
-                                    menuItem.name
-                                  }
-                                </h3>
+                          <div className="p-5 flex flex-col flex-1 justify-between">
+                            <div>
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-slate-900">
+                                    {
+                                      menuItem.name
+                                    }
+                                  </h3>
 
-                                <p className="mt-1 text-sm text-slate-500">
-                                  {
-                                    menuItem.description
-                                  }
-                                </p>
+                                  <p className="mt-1 text-sm text-slate-500">
+                                    {
+                                      menuItem.description
+                                    }
+                                  </p>
+                                </div>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                    menuItem.available
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-slate-100 text-slate-500"
+                                  }`}
+                                >
+                                  {menuItem.available
+                                    ? "Available"
+                                    : "Unavailable"}
+                                </span>
                               </div>
 
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  menuItem.available
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-slate-100 text-slate-500"
-                                }`}
-                              >
-                                {menuItem.available
-                                  ? "Available"
-                                  : "Unavailable"}
-                              </span>
-                            </div>
-
-                            <p className="mt-5 text-lg font-bold text-indigo-600">
-                              {formatPrice(
-                                menuItem.price
-                              )}
-                            </p>
-
-                            {menuItem.reviewCount
-                              ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    toggleMenuItemReviews(
-                                      menuItem.id
-                                    )
-                                  }
-                                  className="mt-2 text-left text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                                >
-                                  Rating: {Number(
-                                    menuItem.averageRating
-                                    ?? 0
-                                  ).toFixed(1)} / 5 ({menuItem.reviewCount})
-                                </button>
-                              )
-                              : (
-                                <p className="mt-2 text-sm text-slate-500">
-                                  No ratings yet
-                                </p>
-                              )}
-
-                            {menuItem.addOns
-                              && menuItem.addOns.length > 0 && (
-                              <p className="mt-2 text-sm text-slate-500">
-                                Add-ons: {menuItem.addOns.join(", ")}
+                              <p className="mt-4 text-lg font-bold text-indigo-600">
+                                {formatPrice(
+                                  menuItem.price
+                                )}
                               </p>
-                            )}
 
-                            {expandedReviewItemId === menuItem.id && (
-                              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <h4 className="text-sm font-semibold text-slate-900">
-                                  Menu Reviews
-                                </h4>
-
-                                {loadingReviewsItemId === menuItem.id ? (
-                                  <p className="mt-3 text-sm text-slate-500">
-                                    Loading reviews...
-                                  </p>
-                                ) : reviewsByMenuItemId[menuItem.id]
-                                    ?.length ? (
-                                  <div className="mt-3 space-y-3">
-                                    {reviewsByMenuItemId[
-                                      menuItem.id
-                                    ].map(review => (
-                                      <div
-                                        key={review.id}
-                                        className="border-b border-slate-200 pb-3 last:border-b-0 last:pb-0"
-                                      >
-                                        <div className="flex items-center justify-between gap-3">
-                                          <span className="text-sm font-semibold text-slate-800">
-                                            {review.rating} / 5
-                                          </span>
-
-                                          <span className="text-xs text-slate-400">
-                                            {formatReviewDate(
-                                              review.createdAt
-                                            )}
-                                          </span>
-                                        </div>
-
-                                        <p className="mt-2 text-sm text-slate-600">
-                                          {review.comment
-                                            || "No comment provided."}
-                                        </p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="mt-3 text-sm text-slate-500">
-                                    No reviews yet.
+                              {menuItem.reviewCount
+                                ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      toggleMenuItemReviews(
+                                        menuItem.id
+                                      )
+                                    }
+                                    className="mt-2 text-left text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                  >
+                                    Rating: {Number(
+                                      menuItem.averageRating
+                                      ?? 0
+                                    ).toFixed(1)} / 5 ({menuItem.reviewCount})
+                                  </button>
+                                )
+                                : (
+                                  <p className="mt-2 text-sm text-slate-500">
+                                    No ratings yet
                                   </p>
                                 )}
-                              </div>
-                            )}
+
+                              {menuItem.addOns
+                                && menuItem.addOns.length > 0 && (
+                                <p className="mt-2 text-xs text-slate-500 font-medium">
+                                  Add-ons: {menuItem.addOns.join(", ")}
+                                </p>
+                              )}
+
+                              {expandedReviewItemId === menuItem.id && (
+                                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                  <h4 className="text-sm font-semibold text-slate-900">
+                                    Menu Reviews
+                                  </h4>
+
+                                  {loadingReviewsItemId === menuItem.id ? (
+                                    <p className="mt-3 text-sm text-slate-500">
+                                      Loading reviews...
+                                    </p>
+                                  ) : reviewsByMenuItemId[menuItem.id]
+                                      ?.length ? (
+                                    <div className="mt-3 space-y-3">
+                                      {reviewsByMenuItemId[
+                                        menuItem.id
+                                      ].map(review => (
+                                        <div
+                                          key={review.id}
+                                          className="border-b border-slate-200 pb-3 last:border-b-0 last:pb-0"
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <span className="text-sm font-semibold text-slate-800">
+                                              {review.rating} / 5
+                                            </span>
+
+                                            <span className="text-xs text-slate-400">
+                                              {formatReviewDate(
+                                                review.createdAt
+                                              )}
+                                            </span>
+                                          </div>
+
+                                          <p className="mt-2 text-sm text-slate-600">
+                                            {review.comment
+                                              || "No comment provided."}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="mt-3 text-sm text-slate-500">
+                                      No reviews yet.
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
 
                             <button
                               type="button"
                               disabled={
                                 !menuItem.available
                                 || restaurant?.openNow === false
-                                || addingItemId
-                                  === menuItem.id
+                                || addingItemId === menuItem.id
                               }
-                              onClick={() =>
-                                handleAddToCart(
-                                  menuItem
-                                )
-                              }
-                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                              onClick={() => handleOpenCustomize(menuItem)}
+                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition shadow-sm flex items-center justify-center gap-2"
                             >
-                              {addingItemId
-                              === menuItem.id
-                                ? "Adding..."
-                                : restaurant?.openNow === false
+                              <span>✨</span>
+                              <span>
+                                {addingItemId === menuItem.id
+                                  ? "Adding..."
+                                  : restaurant?.openNow === false
                                   ? "Restaurant Closed"
                                   : menuItem.available
-                                  ? "Add to Cart"
+                                  ? "Customize & Add"
                                   : "Unavailable"}
+                              </span>
                             </button>
                           </div>
                         </article>
@@ -591,6 +597,14 @@ function RestaurantMenuPage() {
             )}
           </div>
         )}
+
+        {/* Menu Item Customization Modal */}
+        <CustomizeItemModal
+          item={customizingItem}
+          isOpen={customizingItem !== null}
+          onClose={() => setCustomizingItem(null)}
+          onAddToCart={handleAddToCartWithCustomization}
+        />
       </div>
     </main>
   );

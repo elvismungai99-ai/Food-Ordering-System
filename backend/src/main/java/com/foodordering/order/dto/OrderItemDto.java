@@ -18,6 +18,11 @@ public class OrderItemDto {
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
 
+    private String selectedSize;
+    private java.util.List<String> selectedAddOns = new java.util.ArrayList<>();
+    private String specialInstructions;
+    private java.util.List<String> removalRequests = new java.util.ArrayList<>();
+
     public OrderItemDto() {
     }
 
@@ -31,6 +36,20 @@ public class OrderItemDto {
         this.quantity = item.getQuantity();
         this.unitPrice = item.getUnitPrice();
         this.subtotal = item.getSubtotal();
+        this.selectedSize = item.getSelectedSize();
+        this.selectedAddOns = parseList(item.getSelectedAddOns());
+        this.specialInstructions = item.getSpecialInstructions();
+        this.removalRequests = parseList(item.getRemovalRequests());
+    }
+
+    private static java.util.List<String> parseList(String raw) {
+        if (raw == null || raw.isBlank()) return new java.util.ArrayList<>();
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String s : raw.split(";;")) {
+            String trimmed = s.trim();
+            if (!trimmed.isEmpty()) list.add(trimmed);
+        }
+        return list;
     }
 
     public UUID getId() {
@@ -63,5 +82,21 @@ public class OrderItemDto {
 
     public BigDecimal getSubtotal() {
         return subtotal;
+    }
+
+    public String getSelectedSize() {
+        return selectedSize;
+    }
+
+    public java.util.List<String> getSelectedAddOns() {
+        return selectedAddOns;
+    }
+
+    public String getSpecialInstructions() {
+        return specialInstructions;
+    }
+
+    public java.util.List<String> getRemovalRequests() {
+        return removalRequests;
     }
 }

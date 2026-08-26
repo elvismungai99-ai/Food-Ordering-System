@@ -4,6 +4,8 @@ import com.foodordering.cart.CartItem;
 import com.foodordering.menu.MenuItem;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class CartItemDto {
@@ -41,6 +43,11 @@ public class CartItemDto {
     private boolean priceChanged;
     private boolean available;
 
+    private String selectedSize;
+    private List<String> selectedAddOns = new ArrayList<>();
+    private String specialInstructions;
+    private List<String> removalRequests = new ArrayList<>();
+
     public CartItemDto() {
     }
 
@@ -52,6 +59,10 @@ public class CartItemDto {
         this.menuItemId = cartItem.getMenuItemId();
         this.quantity = cartItem.getQuantity();
         this.unitPrice = cartItem.getUnitPrice();
+        this.selectedSize = cartItem.getSelectedSize();
+        this.selectedAddOns = parseJsonOrCommaList(cartItem.getSelectedAddOns());
+        this.specialInstructions = cartItem.getSpecialInstructions();
+        this.removalRequests = parseJsonOrCommaList(cartItem.getRemovalRequests());
 
         this.subtotal = calculateSubtotal(
                 cartItem.getUnitPrice(),
@@ -195,5 +206,52 @@ public class CartItemDto {
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public String getSelectedSize() {
+        return selectedSize;
+    }
+
+    public void setSelectedSize(String selectedSize) {
+        this.selectedSize = selectedSize;
+    }
+
+    public List<String> getSelectedAddOns() {
+        return selectedAddOns;
+    }
+
+    public void setSelectedAddOns(List<String> selectedAddOns) {
+        this.selectedAddOns = selectedAddOns != null ? selectedAddOns : new ArrayList<>();
+    }
+
+    public String getSpecialInstructions() {
+        return specialInstructions;
+    }
+
+    public void setSpecialInstructions(String specialInstructions) {
+        this.specialInstructions = specialInstructions;
+    }
+
+    public List<String> getRemovalRequests() {
+        return removalRequests;
+    }
+
+    public void setRemovalRequests(List<String> removalRequests) {
+        this.removalRequests = removalRequests != null ? removalRequests : new ArrayList<>();
+    }
+
+    private static List<String> parseJsonOrCommaList(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return new ArrayList<>();
+        }
+        String[] parts = raw.split(";;");
+        List<String> list = new ArrayList<>();
+        for (String p : parts) {
+            String trimmed = p.trim();
+            if (!trimmed.isEmpty()) {
+                list.add(trimmed);
+            }
+        }
+        return list;
     }
 }

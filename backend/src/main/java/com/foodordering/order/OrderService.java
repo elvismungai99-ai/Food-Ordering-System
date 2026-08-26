@@ -411,6 +411,22 @@ public class OrderService {
                     subtotal
             );
 
+            orderItem.setSelectedSize(
+                    cartItem.getSelectedSize()
+            );
+
+            orderItem.setSelectedAddOns(
+                    cartItem.getSelectedAddOns()
+            );
+
+            orderItem.setSpecialInstructions(
+                    cartItem.getSpecialInstructions()
+            );
+
+            orderItem.setRemovalRequests(
+                    cartItem.getRemovalRequests()
+            );
+
             order.addItem(
                     orderItem
             );
@@ -854,5 +870,44 @@ public class OrderService {
                                 "Menu item not found"
                         )
                 );
+    }
+
+    @Transactional
+    public OrderDto retryPayment(
+            UUID customerId,
+            UUID orderId,
+            PaymentMethod paymentMethod,
+            String mpesaPhoneNumber
+    ) {
+        Order order = orderRepository
+                .findByIdAndCustomerId(orderId, customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new BusinessRuleException("This order is already paid");
+        }
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessRuleException("Cannot pay for a cancelled order");
+        }
+
+        PaymentMethod method = paymentMethod != null ? paymentMethod : PaymentMethod.MPESA;
+        PaymentResult result = paymentService.processPayment(
+                customerId,
+                order.getTotalAmount(),
+                method,
+                mpesaPhoneNumber
+        );
+
+        if (result == null || !result.isSuccessful()) {
+            String msg = result != null ? result.getMessage() : "Payment initiation failed";
+            throw new BusinessRuleException(msg);
+        }
+
+        order.setPaymentMethod(method);
+        order.setPaymentReference(result.getReference());
+        order.setPaymentStatus(result.getPaymentStatus());
+
+        return new OrderDto(orderRepository.save(order));
     }
 }

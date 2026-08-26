@@ -1,45 +1,39 @@
 import api from "../api/axios";
-import {
-  requestData,
-} from "./request";
+import { requestData } from "./request";
 
 export interface CartItem {
   id: string;
   menuItemId: string;
-
   name: string;
   description?: string | null;
   imageUrl?: string | null;
-
   quantity: number;
-
-  // Price previously stored in the cart.
   unitPrice: number;
-
-  // Current restaurant menu price.
   currentPrice: number;
-
-  // Total using the previous price.
   subtotal: number;
-
-  // Total using the current price.
   currentSubtotal: number;
-
   priceChanged: boolean;
   available: boolean;
+
+  selectedSize?: string | null;
+  selectedAddOns?: string[];
+  specialInstructions?: string | null;
+  removalRequests?: string[];
 }
 
 export interface Cart {
   id: string;
   customerId: string;
-
   items: CartItem[];
-
   totalItems: number;
-
   previousTotalAmount: number;
   totalAmount: number;
-
+  subtotalAmount?: number;
+  deliveryFee?: number;
+  serviceFee?: number;
+  taxAmount?: number;
+  discountAmount?: number;
+  finalTotalAmount?: number;
   hasPriceChanges: boolean;
   hasUnavailableItems: boolean;
 }
@@ -47,6 +41,11 @@ export interface Cart {
 export interface AddCartItemRequest {
   menuItemId: string;
   quantity: number;
+  selectedSize?: string | null;
+  selectedAddOns?: string[];
+  specialInstructions?: string | null;
+  removalRequests?: string[];
+  extraPrice?: number;
 }
 
 export async function getCart(): Promise<Cart> {
@@ -92,8 +91,7 @@ export async function removeCartItem(
   );
 }
 
-export async function acceptCartPriceChanges():
-Promise<Cart> {
+export async function acceptCartPriceChanges(): Promise<Cart> {
   return requestData(
     () => api.post<Cart>(
       "/cart/accept-price-changes"

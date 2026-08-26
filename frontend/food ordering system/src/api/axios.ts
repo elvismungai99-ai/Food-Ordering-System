@@ -8,10 +8,25 @@ interface AuthRequestConfig
   sentAuthToken?: string;
 }
 
+function getBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  if (!envUrl) {
+    return "http://localhost:8080/api";
+  }
+
+  // Remove trailing slashes
+  const cleanUrl = envUrl.replace(/\/+$/, "");
+
+  // If already ends with /api, use it; otherwise append /api
+  if (cleanUrl.endsWith("/api")) {
+    return cleanUrl;
+  }
+
+  return `${cleanUrl}/api`;
+}
+
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_BASE_URL
-    ?? "http://localhost:8080/api",
+  baseURL: getBaseUrl(),
 
   headers: {
     "Content-Type":
@@ -133,71 +148,19 @@ function clearSessionAndRedirect() {
 }
 
 api.interceptors.response.use(
-  (response) =>
-    response,
+  (response) => response,
 
   (error) => {
-    if (
-      error.response?.status === 401
-    ) {
-      const failedToken =
-        (
-          error.config as
-            | AuthRequestConfig
-            | undefined
-        )?.sentAuthToken;
+    if (error.response?.status === 401) {
+      const url = error.config?.url ?? "";
+      const isPublicAuthRequest =
+        url.includes("/auth/login")
+        || url.includes("/auth/register")
+        || url.includes("/auth/forgot-password")
+        || url.includes("/auth/reset-password");
 
-      const isSameTokenStillActive =
-        failedToken
-        && failedToken ===
-          localStorage.getItem("token");
-
-      if (isSameTokenStillActive) {
-
-        /*
-         * An expired token is dead no
-         * matter who it belongs to —
-         * always clear it and send
-         * the user back to login.
-         * This is what was previously
-         * missing: admin sessions used
-         * to fail silently forever on
-         * an expired token.
-         */
-        if (
-          isTokenExpired(failedToken)
-        ) {
-          clearSessionAndRedirect();
-          return Promise.reject(error);
-        }
-
-        /*
-         * Token isn't expired but the
-         * backend still rejected it
-         * (e.g. a transient auth/role
-         * check). For super admin
-         * sessions on /admin/ routes,
-         * give the request a pass
-         * instead of forcing logout —
-         * but only for this narrower,
-         * non-expiry case.
-         */
-        const isAdminSession =
-          localStorage.getItem("role")
-            ?.replace(/^ROLE_/, "")
-            .toUpperCase() === "SUPER_ADMIN";
-
-        const isAdminRequest =
-          typeof error.config?.url === "string"
-          && error.config.url.includes("/admin/");
-
-        if (
-          isAdminSession
-          && isAdminRequest
-        ) {
-          return Promise.reject(error);
-        }
-
+      // For public auth endpoints, let the component handle the error message (e.g. Invalid credentials)
+      if (!isPublicAuthRequest) {
         clearSessionAndRedirect();
       }
     }

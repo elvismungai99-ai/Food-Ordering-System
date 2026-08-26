@@ -25,11 +25,13 @@ public class CartService {
     private final CartRepository cartRepository;
     private final MenuItemRepository menuItemRepository;
     private final RestaurantService restaurantService;
+    private final com.foodordering.payment.PricingService pricingService;
 
     public CartService(
             CartRepository cartRepository,
             MenuItemRepository menuItemRepository,
-            RestaurantService restaurantService
+            RestaurantService restaurantService,
+            com.foodordering.payment.PricingService pricingService
     ) {
         this.cartRepository =
                 cartRepository;
@@ -39,6 +41,9 @@ public class CartService {
 
         this.restaurantService =
                 restaurantService;
+
+        this.pricingService =
+                pricingService;
     }
 
     @Transactional
@@ -60,10 +65,21 @@ public class CartService {
             UUID menuItemId,
             Integer quantity
     ) {
+        com.foodordering.cart.dto.AddCartItemRequest request =
+                new com.foodordering.cart.dto.AddCartItemRequest();
+        request.setMenuItemId(menuItemId);
+        request.setQuantity(quantity);
+        return addItem(customerId, request);
+    }
 
+    @Transactional
+    public CartDto addItem(
+            UUID customerId,
+            com.foodordering.cart.dto.AddCartItemRequest request
+    ) {
         MenuItem menuItem =
                 menuItemRepository
-                        .findById(menuItemId)
+                        .findById(request.getMenuItemId())
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Menu item not found"
@@ -90,7 +106,6 @@ public class CartService {
          * Prevent mixing restaurants in one cart.
          */
         for (CartItem existing : cart.getItems()) {
-
             MenuItem existingMenuItem =
                     menuItemRepository
                             .findById(
@@ -110,36 +125,47 @@ public class CartService {
                                             .getRestaurantId()
                             )
             ) {
-
                 throw new BusinessRuleException(
                         "Your cart can contain items from only one restaurant at a time"
                 );
             }
         }
 
+        String selectedSize = request.getSelectedSize();
+        String selectedAddOns = (request.getSelectedAddOns() != null && !request.getSelectedAddOns().isEmpty())
+                ? String.join(";;", request.getSelectedAddOns())
+                : null;
+        String specialInstructions = request.getSpecialInstructions() != null && !request.getSpecialInstructions().isBlank()
+                ? request.getSpecialInstructions().trim()
+                : null;
+        String removalRequests = (request.getRemovalRequests() != null && !request.getRemovalRequests().isEmpty())
+                ? String.join(";;", request.getRemovalRequests())
+                : null;
+
+        BigDecimal basePrice = menuItem.getPrice() != null ? menuItem.getPrice() : BigDecimal.ZERO;
+        BigDecimal extraPrice = request.getExtraPrice() != null ? request.getExtraPrice() : BigDecimal.ZERO;
+        BigDecimal finalUnitPrice = basePrice.add(extraPrice);
+
         /*
-         * Same item → increase quantity instead
-         * of creating duplicate rows.
+         * Same item with identical customizations → increase quantity
          */
         CartItem existingItem =
                 cart.getItems()
                         .stream()
                         .filter(item ->
-                                item
-                                        .getMenuItemId()
-                                        .equals(
-                                                menuItemId
-                                        )
+                                item.getMenuItemId().equals(request.getMenuItemId())
+                                && java.util.Objects.equals(item.getSelectedSize(), selectedSize)
+                                && java.util.Objects.equals(item.getSelectedAddOns(), selectedAddOns)
+                                && java.util.Objects.equals(item.getSpecialInstructions(), specialInstructions)
+                                && java.util.Objects.equals(item.getRemovalRequests(), removalRequests)
                         )
                         .findFirst()
                         .orElse(null);
 
         if (existingItem != null) {
-
             int newQuantity =
-                    existingItem
-                            .getQuantity()
-                    + quantity;
+                    existingItem.getQuantity()
+                    + request.getQuantity();
 
             if (newQuantity > 99) {
                 throw new BusinessRuleException(
@@ -147,26 +173,16 @@ public class CartService {
                 );
             }
 
-            existingItem.setQuantity(
-                    newQuantity
-            );
-
+            existingItem.setQuantity(newQuantity);
         } else {
-
-            CartItem item =
-                    new CartItem();
-
-            item.setMenuItemId(
-                    menuItem.getId()
-            );
-
-            item.setQuantity(
-                    quantity
-            );
-
-            item.setUnitPrice(
-                    menuItem.getPrice()
-            );
+            CartItem item = new CartItem();
+            item.setMenuItemId(menuItem.getId());
+            item.setQuantity(request.getQuantity());
+            item.setUnitPrice(finalUnitPrice);
+            item.setSelectedSize(selectedSize);
+            item.setSelectedAddOns(selectedAddOns);
+            item.setSpecialInstructions(specialInstructions);
+            item.setRemovalRequests(removalRequests);
 
             cart.addItem(item);
         }
@@ -391,6 +407,19 @@ public class CartService {
         cartDto.setTotalAmount(
                 currentTotal
         );
+
+        cartDto.setSubtotalAmount(
+                currentTotal
+        );
+
+        com.foodordering.payment.PricingBreakdown pricing =
+                pricingService.calculate(currentTotal);
+
+        cartDto.setDeliveryFee(pricing.deliveryFee());
+        cartDto.setServiceFee(pricing.serviceFee());
+        cartDto.setTaxAmount(pricing.taxAmount());
+        cartDto.setDiscountAmount(pricing.discountAmount());
+        cartDto.setFinalTotalAmount(pricing.totalAmount());
 
         cartDto.setHasPriceChanges(
                 hasPriceChanges

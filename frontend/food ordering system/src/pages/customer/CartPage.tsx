@@ -102,6 +102,12 @@ function CartPage() {
     ).format(price);
   };
 
+  const subtotal = cart?.totalAmount ?? 0;
+  const deliveryFee = cart?.deliveryFee ?? 150;
+  const serviceFee = cart?.serviceFee ?? 35;
+  const discountAmount = cart?.discountAmount ?? 0;
+  const finalTotal = cart?.finalTotalAmount ?? (subtotal > 0 ? subtotal + deliveryFee + serviceFee - discountAmount : 0);
+
   return (
     <div className="min-h-screen bg-slate-100">
       <CustomerHeader />
@@ -114,7 +120,7 @@ function CartPage() {
             </h1>
 
             <p className="mt-2 text-slate-500">
-              Review your items and any price changes.
+              Review your customized items and itemized breakdown.
             </p>
           </div>
 
@@ -125,9 +131,9 @@ function CartPage() {
                 "/customer/restaurants"
               )
             }
-            className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700"
+            className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
           >
-            Continue shopping
+            ← Continue shopping
           </button>
         </div>
 
@@ -206,7 +212,7 @@ function CartPage() {
             </button>
           </section>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+          <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
             <section className="space-y-4">
               {cart.items.map((item) => (
                 <article
@@ -235,10 +241,30 @@ function CartPage() {
                             {item.name}
                           </h2>
 
-                          <p className="mt-1 text-sm text-slate-500">
-                            {item.description ||
-                              "No description available."}
-                          </p>
+                          {/* Customization Details */}
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {item.selectedSize && (
+                              <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                                📏 {item.selectedSize}
+                              </span>
+                            )}
+                            {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                              <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                                🧀 +{item.selectedAddOns.join(", ")}
+                              </span>
+                            )}
+                            {item.removalRequests && item.removalRequests.length > 0 && (
+                              <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                                🚫 {item.removalRequests.join(", ")}
+                              </span>
+                            )}
+                          </div>
+
+                          {item.specialInstructions && (
+                            <p className="mt-1 text-xs italic text-slate-500">
+                              Note: "{item.specialInstructions}"
+                            </p>
+                          )}
                         </div>
 
                         <p className="font-semibold text-indigo-600">
@@ -279,9 +305,9 @@ function CartPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="mt-3 text-sm text-slate-500">
+                        <p className="mt-3 text-xs text-slate-500">
                           {formatPrice(
-                            item.currentPrice
+                            item.unitPrice
                           )}{" "}
                           each
                         </p>
@@ -339,7 +365,7 @@ function CartPage() {
                               item.id
                             )
                           }
-                          className="text-sm font-semibold text-red-600 disabled:opacity-50"
+                          className="text-sm font-semibold text-red-600 disabled:opacity-50 hover:underline"
                         >
                           Remove
                         </button>
@@ -350,25 +376,40 @@ function CartPage() {
               ))}
             </section>
 
+            {/* Complete Itemized Order Summary */}
             <aside className="h-fit rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-xl font-semibold text-slate-900">
                 Order summary
               </h2>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-6 space-y-3">
                 <div className="flex justify-between text-sm text-slate-600">
-                  <span>Total items</span>
-                  <span>
-                    {cart.totalItems}
+                  <span>Items Subtotal ({cart.totalItems} items)</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatPrice(subtotal)}
                   </span>
                 </div>
 
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>🛵 Estimated Delivery Fee</span>
+                  <span>{formatPrice(deliveryFee)}</span>
+                </div>
+
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>⚙️ Service Fee</span>
+                  <span>{formatPrice(serviceFee)}</span>
+                </div>
+
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-semibold">
+                    <span>🏷️ Discount Applied</span>
+                    <span>-{formatPrice(discountAmount)}</span>
+                  </div>
+                )}
+
                 {cart.hasPriceChanges && (
                   <div className="flex justify-between text-sm text-slate-500">
-                    <span>
-                      Previous total
-                    </span>
-
+                    <span>Previous total</span>
                     <span className="line-through">
                       {formatPrice(
                         cart.previousTotalAmount
@@ -378,17 +419,15 @@ function CartPage() {
                 )}
 
                 <div className="border-t border-slate-200 pt-4">
-                  <div className="flex justify-between text-lg font-semibold text-slate-950">
-                    <span>
-                      Current total
-                    </span>
-
-                    <span>
-                      {formatPrice(
-                        cart.totalAmount
-                      )}
+                  <div className="flex justify-between text-lg font-bold text-slate-950">
+                    <span>Total Amount</span>
+                    <span className="text-indigo-600">
+                      {formatPrice(finalTotal)}
                     </span>
                   </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Final price includes all taxes & charges
+                  </p>
                 </div>
               </div>
 
@@ -399,7 +438,7 @@ function CartPage() {
                   || cart.hasUnavailableItems
                 }
                 onClick={handleCheckout}
-                className="mt-6 w-full rounded-3xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="mt-6 w-full rounded-3xl bg-indigo-600 px-5 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition"
               >
                 {cart.hasPriceChanges
                   ? "Accept new prices first"

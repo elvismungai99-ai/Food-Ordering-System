@@ -41,7 +41,6 @@ function toLatLng(
   latitude?: number | null,
   longitude?: number | null
 ): LatLng | null {
-
   if (
     latitude == null
     || longitude == null
@@ -64,47 +63,33 @@ function MapContent({
 }: {
   points: LatLng[];
 }) {
-  const map =
-    useMap();
+  const map = useMap();
 
-  const boundsKey =
-    useMemo(
-      () =>
-        points
-          .map(point =>
-            `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`
-          )
-          .join("|"),
-      [points]
-    );
+  const boundsKey = useMemo(
+    () =>
+      points
+        .map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`)
+        .join("|"),
+    [points]
+  );
 
   useEffect(() => {
-
     if (!map || points.length === 0) {
       return;
     }
 
-    if (
-      points.length === 1
-    ) {
-      map.setCenter(
-        points[0]
-      );
-
+    if (points.length === 1) {
+      map.setCenter(points[0]);
       map.setZoom(14);
-
       return;
     }
 
-    const bounds =
-      new google.maps.LatLngBounds();
-
+    const bounds = new google.maps.LatLngBounds();
     for (const point of points) {
       bounds.extend(point);
     }
 
     map.fitBounds(bounds, 64);
-
   }, [map, boundsKey, points]);
 
   return null;
@@ -119,23 +104,17 @@ function LiveTrackingMapInner({
   destination: LatLng | null;
   rider: LatLng | null;
 }) {
-  const mapPoints =
-    useMemo(
-      () =>
-        [restaurant, rider, destination]
-          .filter(
-            (point): point is LatLng =>
-              point != null
-          ),
-      [restaurant, rider, destination]
-    );
+  const mapPoints = useMemo(
+    () =>
+      [restaurant, rider, destination].filter(
+        (point): point is LatLng => point != null
+      ),
+    [restaurant, rider, destination]
+  );
 
   const routePath =
     restaurant && destination
-      ? [
-          restaurant,
-          destination,
-        ]
+      ? [restaurant, destination]
       : null;
 
   return (
@@ -144,10 +123,7 @@ function LiveTrackingMapInner({
         width: "100%",
         height: "100%",
       }}
-      defaultCenter={
-        mapPoints[0]
-        ?? DEFAULT_CENTER
-      }
+      defaultCenter={mapPoints[0] ?? DEFAULT_CENTER}
       defaultZoom={13}
       gestureHandling="greedy"
       disableDefaultUI={false}
@@ -203,52 +179,72 @@ function LiveTrackingMapInner({
 }
 
 /*
- * Embedded Google Map showing the
- * restaurant pickup point, the delivery
- * destination and the rider's live position.
- *
- * Renders a friendly placeholder instead of
- * the map when the API key or coordinates
- * are missing.
+ * Fallback OpenStreetMap viewer used when
+ * Google Maps API key is not configured or in free mode.
  */
-export function LiveTrackingMap(
-  props: LiveTrackingMapProps
-) {
+function OpenStreetMapFallback({
+  centerLat,
+  centerLon,
+}: {
+  centerLat: number;
+  centerLon: number;
+}) {
+  const delta = 0.015;
+  const bbox = `${centerLon - delta},${centerLat - delta},${centerLon + delta},${centerLat + delta}`;
+  const iframeSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${centerLat},${centerLon}`;
 
-  const restaurant =
-    toLatLng(
-      props.restaurantLatitude,
-      props.restaurantLongitude
-    );
+  return (
+    <div className="relative h-80 w-full overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+      <iframe
+        title="Live Order Map"
+        width="100%"
+        height="100%"
+        src={iframeSrc}
+        className="border-0"
+        loading="lazy"
+      />
+      <div className="absolute bottom-2 right-2 rounded-lg bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm">
+        📍 Live GPS Tracking (OpenStreetMap)
+      </div>
+    </div>
+  );
+}
 
-  const destination =
-    toLatLng(
-      props.destinationLatitude,
-      props.destinationLongitude
-    );
+/*
+ * Embedded Map showing the restaurant pickup point,
+ * the delivery destination, and the rider's live position.
+ */
+export function LiveTrackingMap(props: LiveTrackingMapProps) {
+  const restaurant = toLatLng(
+    props.restaurantLatitude,
+    props.restaurantLongitude
+  );
 
-  const rider =
-    toLatLng(
-      props.riderLatitude,
-      props.riderLongitude
-    );
+  const destination = toLatLng(
+    props.destinationLatitude,
+    props.destinationLongitude
+  );
 
-  if (!GOOGLE_MAPS_API_KEY) {
+  const rider = toLatLng(
+    props.riderLatitude,
+    props.riderLongitude
+  );
+
+  const activePoint = rider || destination || restaurant;
+
+  if (!restaurant && !destination && !rider) {
     return (
       <div className="flex h-72 items-center justify-center rounded-[24px] bg-slate-100 text-sm text-slate-500">
-        Map preview unavailable — Google
-        Maps API key is not configured.
+        Map coordinates for this order are not available yet.
       </div>
     );
   }
 
-  if (!restaurant && !destination) {
-    return (
-      <div className="flex h-72 items-center justify-center rounded-[24px] bg-slate-100 text-sm text-slate-500">
-        Map coordinates for this order are
-        not available yet.
-      </div>
-    );
+  // If no Google Maps API key is configured, fallback smoothly to OpenStreetMap
+  if (!GOOGLE_MAPS_API_KEY) {
+    const lat = activePoint?.lat ?? DEFAULT_CENTER.lat;
+    const lon = activePoint?.lng ?? DEFAULT_CENTER.lng;
+    return <OpenStreetMapFallback centerLat={lat} centerLon={lon} />;
   }
 
   return (

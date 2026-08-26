@@ -97,6 +97,18 @@ public class OrderItem {
     )
     private BigDecimal subtotal;
 
+    @Column(name = "selected_size")
+    private String selectedSize;
+
+    @Column(name = "selected_add_ons", columnDefinition = "TEXT")
+    private String selectedAddOns;
+
+    @Column(name = "special_instructions", columnDefinition = "TEXT")
+    private String specialInstructions;
+
+    @Column(name = "removal_requests", columnDefinition = "TEXT")
+    private String removalRequests;
+
     @Column(
             name = "created_at",
             nullable = false
@@ -187,6 +199,38 @@ public class OrderItem {
             BigDecimal subtotal
     ) {
         this.subtotal = subtotal;
+    }
+
+    public String getSelectedSize() {
+        return selectedSize;
+    }
+
+    public void setSelectedSize(String selectedSize) {
+        this.selectedSize = selectedSize;
+    }
+
+    public String getSelectedAddOns() {
+        return selectedAddOns;
+    }
+
+    public void setSelectedAddOns(String selectedAddOns) {
+        this.selectedAddOns = selectedAddOns;
+    }
+
+    public String getSpecialInstructions() {
+        return specialInstructions;
+    }
+
+    public void setSpecialInstructions(String specialInstructions) {
+        this.specialInstructions = specialInstructions;
+    }
+
+    public String getRemovalRequests() {
+        return removalRequests;
+    }
+
+    public void setRemovalRequests(String removalRequests) {
+        this.removalRequests = removalRequests;
     }
 
     public LocalDateTime getCreatedAt() {

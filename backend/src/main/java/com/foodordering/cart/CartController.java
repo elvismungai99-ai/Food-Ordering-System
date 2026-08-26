@@ -79,8 +79,7 @@ public class CartController {
         return ResponseEntity.ok(
                 cartService.addItem(
                         customerId,
-                        request.getMenuItemId(),
-                        request.getQuantity()
+                        request
                 )
         );
     }

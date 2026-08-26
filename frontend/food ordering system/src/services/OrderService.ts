@@ -1,7 +1,5 @@
 import api from "../api/axios";
-import {
-  requestData,
-} from "./request";
+import { requestData } from "./request";
 
 export type OrderStatus =
   | "PENDING"
@@ -27,6 +25,11 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+
+  selectedSize?: string | null;
+  selectedAddOns?: string[];
+  specialInstructions?: string | null;
+  removalRequests?: string[];
 }
 
 export interface Order {
@@ -69,13 +72,11 @@ export interface PlaceOrderRequest {
   mpesaPhoneNumber?: string;
 }
 
-/*
- * Customer:
- * Place a new order using the current cart.
- *
- * Backend:
- * POST /api/orders
- */
+export interface RetryPaymentRequest {
+  paymentMethod?: PaymentMethod;
+  mpesaPhoneNumber?: string;
+}
+
 export async function placeOrder(
   request: PlaceOrderRequest
 ): Promise<Order> {
@@ -88,16 +89,20 @@ export async function placeOrder(
   );
 }
 
-/*
- * Customer:
- * Get all orders belonging to the
- * currently authenticated customer.
- *
- * Backend:
- * GET /api/orders
- */
-export async function getCustomerOrders():
-Promise<Order[]> {
+export async function retryOrderPayment(
+  orderId: string,
+  request: RetryPaymentRequest
+): Promise<Order> {
+  return requestData(
+    () => api.post<Order>(
+      `/orders/${orderId}/retry-payment`,
+      request
+    ),
+    "Unable to process payment retry."
+  );
+}
+
+export async function getCustomerOrders(): Promise<Order[]> {
   return requestData(
     () => api.get<Order[]>(
       "/orders"
@@ -106,14 +111,6 @@ Promise<Order[]> {
   );
 }
 
-/*
- * Customer:
- * Get one specific order belonging
- * to the currently authenticated customer.
- *
- * Backend:
- * GET /api/orders/{orderId}
- */
 export async function getCustomerOrder(
   orderId: string
 ): Promise<Order> {
@@ -125,14 +122,6 @@ export async function getCustomerOrder(
   );
 }
 
-/*
- * Restaurant admin:
- * Get all orders belonging to
- * a specific restaurant.
- *
- * Backend:
- * GET /api/orders/restaurant/{restaurantId}
- */
 export async function getRestaurantOrders(
   restaurantId: string
 ): Promise<Order[]> {
@@ -144,14 +133,6 @@ export async function getRestaurantOrders(
   );
 }
 
-/*
- * Restaurant admin:
- * Move an order through the
- * order state machine.
- *
- * Backend:
- * PATCH /api/orders/{orderId}/status
- */
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus
@@ -167,13 +148,11 @@ export async function updateOrderStatus(
   );
 }
 
-/*
- * Live tracking snapshot returned by:
- * GET /api/orders/{orderId}/tracking
- */
 export interface OrderTracking {
   orderId: string;
   status: OrderStatus;
+  paymentStatus?: string | null;
+  estimatedDeliveryMinutes?: number | null;
 
   restaurantName: string;
   restaurantLatitude?: number | null;
@@ -213,16 +192,6 @@ type DeliveryRequestStatus =
   | "DELIVERED"
   | "CANCELLED";
 
-/*
- * Customer:
- * Get the live tracking snapshot for one
- * specific order (status, restaurant pickup
- * point, destination and the assigned
- * rider's most recent GPS position).
- *
- * Backend:
- * GET /api/orders/{orderId}/tracking
- */
 export async function getOrderTracking(
   orderId: string
 ): Promise<OrderTracking> {

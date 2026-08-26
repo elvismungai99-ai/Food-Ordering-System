@@ -14,6 +14,7 @@ import {
   getCart,
   removeCartItem,
   updateCartItemQuantity,
+  type AddCartItemRequest,
   type Cart,
 } from "../services/CartService";
 import {
@@ -30,7 +31,7 @@ interface CartContextValue {
   refreshCart: () => Promise<void>;
 
   addToCart: (
-    menuItemId: string,
+    itemOrId: string | AddCartItemRequest,
     quantity?: number
   ) => Promise<void>;
 
@@ -43,8 +44,7 @@ interface CartContextValue {
     cartItemId: string
   ) => Promise<void>;
 
-  acceptPriceChanges:
-    () => Promise<void>;
+  acceptPriceChanges: () => Promise<void>;
 
   clearCartState: () => void;
 }
@@ -53,191 +53,127 @@ interface CartProviderProps {
   children: ReactNode;
 }
 
-const CartContext =
-  createContext<CartContextValue | undefined>(
-    undefined
-  );
+const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 export function CartProvider({
   children,
 }: CartProviderProps) {
-  const [cart, setCart] =
-    useState<Cart | null>(null);
+  const [cart, setCart] = useState<Cart | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const clearCartState = useCallback(() => {
+    setCart(null);
+    setError("");
+  }, []);
 
-  const [error, setError] =
-    useState("");
+  const refreshCart = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-  const clearCartState =
-    useCallback(() => {
-      setCart(null);
+    const normalizedRole = role?.replace(/^ROLE_/, "").toUpperCase();
+
+    if (!token || normalizedRole !== "CUSTOMER") {
+      clearCartState();
+      return;
+    }
+
+    try {
+      setLoading(true);
       setError("");
-    }, []);
 
-  const refreshCart =
-    useCallback(async () => {
-      const token =
-        localStorage.getItem("token");
+      const cartData = await getCart();
+      setCart(cartData);
+    } catch (requestError) {
+      console.error("Failed to load cart", requestError);
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setLoading(false);
+    }
+  }, [clearCartState]);
 
-      const role =
-        localStorage.getItem("role");
-
-      const normalizedRole =
-        role
-          ?.replace(
-            /^ROLE_/,
-            ""
-          )
-          .toUpperCase();
-
-      if (
-        !token
-        || normalizedRole !== "CUSTOMER"
-      ) {
-        clearCartState();
-        return;
-      }
-
+  const addToCart = useCallback(
+    async (
+      itemOrId: string | AddCartItemRequest,
+      quantity = 1
+    ) => {
       try {
         setLoading(true);
         setError("");
 
-        const cartData =
-          await getCart();
+        const req: AddCartItemRequest =
+          typeof itemOrId === "string"
+            ? { menuItemId: itemOrId, quantity }
+            : itemOrId;
 
-        setCart(cartData);
-      } catch (requestError) {
-        console.error(
-          "Failed to load cart",
-          requestError
-        );
-
-        setError(
-          getApiErrorMessage(
-            requestError
-          )
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, [clearCartState]);
-
-  const addToCart =
-    useCallback(
-      async (
-        menuItemId: string,
-        quantity = 1
-      ) => {
-        try {
-          setLoading(true);
-          setError("");
-
-          const updatedCart =
-            await addCartItem({
-              menuItemId,
-              quantity,
-            });
-
-          setCart(updatedCart);
-        } catch (requestError) {
-          setError(
-            getApiErrorMessage(
-              requestError
-            )
-          );
-
-          throw requestError;
-        } finally {
-          setLoading(false);
-        }
-      },
-      []
-    );
-
-  const updateQuantity =
-    useCallback(
-      async (
-        cartItemId: string,
-        quantity: number
-      ) => {
-        try {
-          setLoading(true);
-          setError("");
-
-          const updatedCart =
-            await updateCartItemQuantity(
-              cartItemId,
-              quantity
-            );
-
-          setCart(updatedCart);
-        } catch (requestError) {
-          setError(
-            getApiErrorMessage(
-              requestError
-            )
-          );
-
-          throw requestError;
-        } finally {
-          setLoading(false);
-        }
-      },
-      []
-    );
-
-  const removeItem =
-    useCallback(
-      async (cartItemId: string) => {
-        try {
-          setLoading(true);
-          setError("");
-
-          const updatedCart =
-            await removeCartItem(
-              cartItemId
-            );
-
-          setCart(updatedCart);
-        } catch (requestError) {
-          setError(
-            getApiErrorMessage(
-              requestError
-            )
-          );
-
-          throw requestError;
-        } finally {
-          setLoading(false);
-        }
-      },
-      []
-    );
-
-  const acceptPriceChanges =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const updatedCart =
-          await acceptCartPriceChanges();
-
+        const updatedCart = await addCartItem(req);
         setCart(updatedCart);
       } catch (requestError) {
-        setError(
-          getApiErrorMessage(
-            requestError
-          )
-        );
-
+        setError(getApiErrorMessage(requestError));
         throw requestError;
       } finally {
         setLoading(false);
       }
-    }, []);
+    },
+    []
+  );
+
+  const updateQuantity = useCallback(
+    async (
+      cartItemId: string,
+      quantity: number
+    ) => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const updatedCart = await updateCartItemQuantity(
+          cartItemId,
+          quantity
+        );
+        setCart(updatedCart);
+      } catch (requestError) {
+        setError(getApiErrorMessage(requestError));
+        throw requestError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const removeItem = useCallback(
+    async (cartItemId: string) => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const updatedCart = await removeCartItem(cartItemId);
+        setCart(updatedCart);
+      } catch (requestError) {
+        setError(getApiErrorMessage(requestError));
+        throw requestError;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const acceptPriceChanges = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const updatedCart = await acceptCartPriceChanges();
+      setCart(updatedCart);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError));
+      throw requestError;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     refreshCart();
@@ -246,8 +182,7 @@ export function CartProvider({
   const value = useMemo(
     () => ({
       cart,
-      totalItems:
-        cart?.totalItems ?? 0,
+      totalItems: cart?.totalItems ?? 0,
       loading,
       error,
       refreshCart,
@@ -271,23 +206,17 @@ export function CartProvider({
   );
 
   return (
-    <CartContext.Provider
-      value={value}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
 }
 
-export function useCart():
-CartContextValue {
-  const context =
-    useContext(CartContext);
+export function useCart(): CartContextValue {
+  const context = useContext(CartContext);
 
   if (!context) {
-    throw new Error(
-      "useCart must be used inside CartProvider"
-    );
+    throw new Error("useCart must be used inside CartProvider");
   }
 
   return context;

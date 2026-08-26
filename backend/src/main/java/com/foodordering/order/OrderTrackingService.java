@@ -89,9 +89,19 @@ public class OrderTrackingService {
         boolean hasDeliveryRequest =
                 deliveryRequest != null;
 
+        Integer etaMinutes = switch (order.getStatus()) {
+            case PENDING, CONFIRMED -> 35;
+            case PREPARING -> 25;
+            case READY_FOR_PICKUP -> 15;
+            case OUT_FOR_DELIVERY -> 10;
+            case DELIVERED, CANCELLED -> 0;
+        };
+
         return new OrderTrackingDto(
                 order.getId(),
                 order.getStatus().name(),
+                order.getPaymentStatus() != null ? order.getPaymentStatus().name() : "PENDING",
+                etaMinutes,
                 order.getRestaurantName(),
                 hasDeliveryRequest
                         ? deliveryRequest.getRestaurantLatitude()

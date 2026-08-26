@@ -26,6 +26,12 @@ public class AddCartItemRequest {
     )
     private Integer quantity;
 
+    private String selectedSize;
+    private java.util.List<String> selectedAddOns = new java.util.ArrayList<>();
+    private String specialInstructions;
+    private java.util.List<String> removalRequests = new java.util.ArrayList<>();
+    private java.math.BigDecimal extraPrice = java.math.BigDecimal.ZERO;
+
     public UUID getMenuItemId() {
         return menuItemId;
     }
@@ -46,5 +52,45 @@ public class AddCartItemRequest {
     ) {
         this.quantity =
                 quantity;
+    }
+
+    public String getSelectedSize() {
+        return selectedSize;
+    }
+
+    public void setSelectedSize(String selectedSize) {
+        this.selectedSize = selectedSize;
+    }
+
+    public java.util.List<String> getSelectedAddOns() {
+        return selectedAddOns;
+    }
+
+    public void setSelectedAddOns(java.util.List<String> selectedAddOns) {
+        this.selectedAddOns = selectedAddOns != null ? selectedAddOns : new java.util.ArrayList<>();
+    }
+
+    public String getSpecialInstructions() {
+        return specialInstructions;
+    }
+
+    public void setSpecialInstructions(String specialInstructions) {
+        this.specialInstructions = specialInstructions;
+    }
+
+    public java.util.List<String> getRemovalRequests() {
+        return removalRequests;
+    }
+
+    public void setRemovalRequests(java.util.List<String> removalRequests) {
+        this.removalRequests = removalRequests != null ? removalRequests : new java.util.ArrayList<>();
+    }
+
+    public java.math.BigDecimal getExtraPrice() {
+        return extraPrice;
+    }
+
+    public void setExtraPrice(java.math.BigDecimal extraPrice) {
+        this.extraPrice = extraPrice != null ? extraPrice : java.math.BigDecimal.ZERO;
     }
 }

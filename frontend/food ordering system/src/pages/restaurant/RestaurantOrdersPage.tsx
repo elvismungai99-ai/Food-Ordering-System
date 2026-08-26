@@ -678,38 +678,52 @@ function RestaurantOrdersPage() {
                     </div>
 
                     <div className="mt-6 border-t border-slate-200 pt-5">
-
                       <h2 className="font-semibold text-slate-900">
-                        Order Items
+                        Order Items & Customizations
                       </h2>
 
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 space-y-3">
+                        {order.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="rounded-xl bg-slate-50 p-3 border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm"
+                          >
+                            <div>
+                              <div className="font-semibold text-slate-900">
+                                {item.quantity}× {item.itemName}
+                              </div>
 
-                        {order.items.map(
-                          item => (
-                            <div
-                              key={item.id}
-                              className="flex justify-between gap-4 text-sm"
-                            >
-
-                              <span className="text-slate-600">
-                                {item.itemName}
-                                {" × "}
-                                {item.quantity}
-                              </span>
-
-                              <span className="font-medium text-slate-900">
-                                {formatPrice(
-                                  item.subtotal
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {item.selectedSize && (
+                                  <span className="rounded bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                                    📏 {item.selectedSize}
+                                  </span>
                                 )}
-                              </span>
+                                {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                                    🧀 +{item.selectedAddOns.join(", ")}
+                                  </span>
+                                )}
+                                {item.removalRequests && item.removalRequests.length > 0 && (
+                                  <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                                    🚫 {item.removalRequests.join(", ")}
+                                  </span>
+                                )}
+                              </div>
 
+                              {item.specialInstructions && (
+                                <p className="mt-1 text-xs italic text-amber-800 font-medium">
+                                  Kitchen Note: "{item.specialInstructions}"
+                                </p>
+                              )}
                             </div>
-                          )
-                        )}
 
+                            <span className="font-bold text-slate-900 whitespace-nowrap">
+                              {formatPrice(item.subtotal)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-
                     </div>
 
                     {nextStatus &&

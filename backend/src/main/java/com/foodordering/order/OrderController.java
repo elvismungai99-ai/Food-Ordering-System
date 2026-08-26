@@ -168,6 +168,26 @@ public class OrderController {
         );
     }
 
+        @PostMapping(
+            "/{orderId}/retry-payment"
+    )
+    public ResponseEntity<OrderDto> retryPayment(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable UUID orderId,
+            @RequestBody com.foodordering.order.dto.RetryPaymentRequest request
+    ) {
+        UUID customerId = extractUserId(authHeader);
+        requireCustomer(authHeader);
+
+        com.foodordering.payment.PaymentMethod method =
+                request != null ? request.getPaymentMethod() : com.foodordering.payment.PaymentMethod.MPESA;
+        String phone = request != null ? request.getMpesaPhoneNumber() : null;
+
+        return ResponseEntity.ok(
+                orderService.retryPayment(customerId, orderId, method, phone)
+        );
+    }
+
     @GetMapping(
             "/restaurant/{restaurantId}"
     )

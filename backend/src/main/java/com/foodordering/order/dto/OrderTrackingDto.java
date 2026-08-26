@@ -9,6 +9,8 @@ import java.util.UUID;
  *
  * Contains everything the customer needs to
  * follow their delivery on a live map:
+ * - order status and payment status
+ * - estimated delivery minutes
  * - restaurant pickup coordinates
  * - delivery destination coordinates
  * - the assigned rider and their live position
@@ -16,6 +18,8 @@ import java.util.UUID;
 public record OrderTrackingDto(
         UUID orderId,
         String status,
+        String paymentStatus,
+        Integer estimatedDeliveryMinutes,
         String restaurantName,
         BigDecimal restaurantLatitude,
         BigDecimal restaurantLongitude,

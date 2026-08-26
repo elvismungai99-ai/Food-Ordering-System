@@ -18,18 +18,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(
-        name = "cart_items",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_cart_items_cart_menu_item",
-                        columnNames = {
-                                "cart_id",
-                                "menu_item_id"
-                        }
-                )
-        }
-)
+@Table(name = "cart_items")
 public class CartItem {
 
     @Id
@@ -53,6 +42,18 @@ public class CartItem {
             scale = 2
     )
     private BigDecimal unitPrice;
+
+    @Column(name = "selected_size")
+    private String selectedSize;
+
+    @Column(name = "selected_add_ons", columnDefinition = "TEXT")
+    private String selectedAddOns;
+
+    @Column(name = "special_instructions", columnDefinition = "TEXT")
+    private String specialInstructions;
+
+    @Column(name = "removal_requests", columnDefinition = "TEXT")
+    private String removalRequests;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -124,6 +125,38 @@ public class CartItem {
 
     public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
+    }
+
+    public String getSelectedSize() {
+        return selectedSize;
+    }
+
+    public void setSelectedSize(String selectedSize) {
+        this.selectedSize = selectedSize;
+    }
+
+    public String getSelectedAddOns() {
+        return selectedAddOns;
+    }
+
+    public void setSelectedAddOns(String selectedAddOns) {
+        this.selectedAddOns = selectedAddOns;
+    }
+
+    public String getSpecialInstructions() {
+        return specialInstructions;
+    }
+
+    public void setSpecialInstructions(String specialInstructions) {
+        this.specialInstructions = specialInstructions;
+    }
+
+    public String getRemovalRequests() {
+        return removalRequests;
+    }
+
+    public void setRemovalRequests(String removalRequests) {
+        this.removalRequests = removalRequests;
     }
 
     public LocalDateTime getCreatedAt() {

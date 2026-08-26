@@ -24,11 +24,15 @@ public class CartDto {
     private BigDecimal previousTotalAmount;
 
     /*
-     * Total using current menu prices.
-     * This is the amount that will be charged
-     * after the customer accepts the changes.
+     * Total using current menu prices (subtotal).
      */
     private BigDecimal totalAmount;
+    private BigDecimal subtotalAmount;
+    private BigDecimal deliveryFee = BigDecimal.valueOf(150.00);
+    private BigDecimal serviceFee = BigDecimal.valueOf(35.00);
+    private BigDecimal taxAmount = BigDecimal.ZERO;
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal finalTotalAmount;
 
     private boolean hasPriceChanges;
     private boolean hasUnavailableItems;
@@ -179,5 +183,53 @@ public class CartDto {
     ) {
         this.hasUnavailableItems =
                 hasUnavailableItems;
+    }
+
+    public BigDecimal getSubtotalAmount() {
+        return subtotalAmount != null ? subtotalAmount : totalAmount;
+    }
+
+    public void setSubtotalAmount(BigDecimal subtotalAmount) {
+        this.subtotalAmount = subtotalAmount;
+    }
+
+    public BigDecimal getDeliveryFee() {
+        return deliveryFee;
+    }
+
+    public void setDeliveryFee(BigDecimal deliveryFee) {
+        this.deliveryFee = deliveryFee;
+    }
+
+    public BigDecimal getServiceFee() {
+        return serviceFee;
+    }
+
+    public void setServiceFee(BigDecimal serviceFee) {
+        this.serviceFee = serviceFee;
+    }
+
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
+    }
+
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount;
+    }
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(BigDecimal discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
+    public BigDecimal getFinalTotalAmount() {
+        return finalTotalAmount != null ? finalTotalAmount : (totalAmount != null ? totalAmount.add(deliveryFee).add(serviceFee) : BigDecimal.ZERO);
+    }
+
+    public void setFinalTotalAmount(BigDecimal finalTotalAmount) {
+        this.finalTotalAmount = finalTotalAmount;
     }
 }
