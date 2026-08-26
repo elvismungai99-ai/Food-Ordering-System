@@ -12,8 +12,8 @@ import {
 } from "@vis.gl/react-google-maps";
 
 const GOOGLE_MAPS_API_KEY =
-  import.meta.env
-    .VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)
+  || "AIzaSyAic2_IEv3FpXAt7f0fSkaWZeVxvB4II98";
 
 /*
  * Fallback center (Nairobi) used when no
