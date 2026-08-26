@@ -312,8 +312,8 @@ class FullOrderFlowIntegrationTest {
         restaurant.setName("Flow Kitchen");
         restaurant.setDescription("Integration test kitchen");
         restaurant.setAddress("Nairobi CBD");
-        restaurant.setOpeningTime(LocalTime.of(8, 0));
-        restaurant.setClosingTime(LocalTime.of(22, 0));
+        restaurant.setOpeningTime(LocalTime.of(0, 0, 0));
+        restaurant.setClosingTime(LocalTime.of(23, 59, 59));
         restaurant.setStatus(RestaurantStatus.APPROVED);
         restaurant.setCategory("Fast Food");
 

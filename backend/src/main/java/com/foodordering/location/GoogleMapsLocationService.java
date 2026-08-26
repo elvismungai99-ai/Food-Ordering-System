@@ -6,18 +6,13 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.server.ResponseStatusException;
-
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 import jakarta.annotation.PostConstruct;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class GoogleMapsLocationService {
@@ -80,115 +75,100 @@ public class GoogleMapsLocationService {
             BigDecimal latitude,
             BigDecimal longitude
     ) {
+        // 1. Try Google Maps if API key is provided
+        if (apiKey != null && !apiKey.isBlank()) {
+            try {
+                JsonNode response =
+                        restClient
+                                .get()
+                                .uri(uriBuilder ->
+                                        uriBuilder
+                                                .path("/maps/api/geocode/json")
+                                                .queryParam(
+                                                        "latlng",
+                                                        latitude + "," + longitude
+                                                )
+                                                .queryParam(
+                                                        "key",
+                                                        apiKey
+                                                )
+                                                .build()
+                                )
+                                .retrieve()
+                                .body(JsonNode.class);
 
-        if (apiKey == null || apiKey.isBlank()) {
-            LOGGER.warn(
-                    "Google Maps API key is not configured."
-            );
+                String status =
+                        response != null
+                                ? response.path("status").asText("")
+                                : "";
 
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Google Maps API key is not configured."
-            );
+                if ("OK".equals(status)) {
+                    String displayName =
+                            response
+                                    .path("results")
+                                    .path(0)
+                                    .path("formatted_address")
+                                    .asText("");
+
+                    if (!displayName.isBlank()) {
+                        return new ReverseGeocodeResponse(displayName.trim());
+                    }
+                } else {
+                    LOGGER.warn(
+                            "Google Maps geocoding status '{}': {}",
+                            status,
+                            extractGoogleStatusMessage(response, status)
+                    );
+                }
+            } catch (Exception ex) {
+                LOGGER.warn("Google Maps reverse geocoding call failed: {}", ex.getMessage());
+            }
         }
 
-        JsonNode response;
+        // 2. Resilient fallback to OpenStreetMap Nominatim
+        String osmAddress = reverseGeocodeWithOsm(latitude, longitude);
+        if (osmAddress != null && !osmAddress.isBlank()) {
+            return new ReverseGeocodeResponse(osmAddress);
+        }
 
+        // 3. Fallback to GPS coordinates representation
+        return new ReverseGeocodeResponse(
+                String.format("GPS Location (%.6f, %.6f)", latitude.doubleValue(), longitude.doubleValue())
+        );
+    }
+
+    private String reverseGeocodeWithOsm(BigDecimal latitude, BigDecimal longitude) {
         try {
-            response =
-                    restClient
-                            .get()
-                            .uri(uriBuilder ->
-                                    uriBuilder
-                                            .path("/maps/api/geocode/json")
-                                            .queryParam(
-                                                    "latlng",
-                                                    latitude + "," + longitude
-                                            )
-                                            .queryParam(
-                                                    "key",
-                                                    apiKey
-                                            )
-                                            .build()
+            RestClient osmClient =
+                    RestClient.builder()
+                            .baseUrl("https://nominatim.openstreetmap.org")
+                            .defaultHeader("User-Agent", "FoodOrderingSystem/1.0 (contact@foodordering.local)")
+                            .build();
+
+            JsonNode osmNode =
+                    osmClient.get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/reverse")
+                                    .queryParam("format", "json")
+                                    .queryParam("lat", latitude)
+                                    .queryParam("lon", longitude)
+                                    .queryParam("zoom", "18")
+                                    .queryParam("addressdetails", "1")
+                                    .build()
                             )
                             .retrieve()
                             .body(JsonNode.class);
-        } catch (RestClientResponseException exception) {
-            String googleMessage =
-                    extractErrorMessage(
-                            exception.getResponseBodyAsString()
-                    );
 
-            LOGGER.warn(
-                    "Google Maps reverse geocoding failed with status {} and body {}",
-                    exception.getStatusCode(),
-                    exception.getResponseBodyAsString()
-            );
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Google Maps error: "
-                    + googleMessage
-            );
-        } catch (RestClientException exception) {
-            LOGGER.warn(
-                    "Google Maps reverse geocoding request failed",
-                    exception
-            );
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Unable to contact Google Maps."
-            );
-        } catch (RuntimeException exception) {
-            LOGGER.warn(
-                    "Unexpected reverse geocoding error",
-                    exception
-            );
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Unable to resolve the place name for this location."
-            );
+            if (osmNode != null && osmNode.has("display_name")) {
+                String address = osmNode.path("display_name").asText("");
+                if (!address.isBlank()) {
+                    return address.trim();
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("OSM fallback reverse geocoding failed: {}", e.getMessage());
         }
-
-        String status =
-                response != null
-                        ? response
-                                .path("status")
-                                .asText("")
-                        : "";
-
-        if (!"OK".equals(status)) {
-            String message =
-                    extractGoogleStatusMessage(
-                            response,
-                            status
-                    );
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Google Maps error: " + message
-            );
-        }
-
-        String displayName =
-                response
-                        .path("results")
-                        .path(0)
-                        .path("formatted_address")
-                        .asText("");
-
-        if (displayName.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Google Maps did not return a place name for this location."
-            );
-        }
-
-        return new ReverseGeocodeResponse(
-                displayName
-        );
+        return null;
     }
 
     private String extractGoogleStatusMessage(
