@@ -2,6 +2,7 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
+import { getActiveAuthSession } from "../utils/auth";
 
 interface ProtectedRouteProps {
   allowedRoles: string[];
@@ -10,14 +11,7 @@ interface ProtectedRouteProps {
 function ProtectedRoute({
   allowedRoles,
 }: ProtectedRouteProps) {
-  const token = localStorage.getItem("token");
-
-  const storedRole =
-    localStorage.getItem("role");
-
-  const role = storedRole
-    ?.replace("ROLE_", "")
-    .toUpperCase();
+  const { token, role } = getActiveAuthSession();
 
   if (!token) {
     return (

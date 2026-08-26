@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import heroImage from "../../../assets/hero.png";
+import { clearAuthSession, getActiveAuthSession } from "../../../utils/auth";
 
 const categories = [
   "Pizza",
@@ -47,14 +49,19 @@ const roleLinks = [
 ];
 
 function HomePage() {
-  const token =
-    localStorage.getItem("token");
+  const [session, setSession] = useState(() => getActiveAuthSession());
 
-  const role =
-    localStorage
-      .getItem("role")
-      ?.replace("ROLE_", "")
-      .toUpperCase();
+  const { token, role, firstName } = session;
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setSession({
+      token: null,
+      role: null,
+      firstName: null,
+      userId: null,
+    });
+  };
 
   const dashboardPath =
     role === "CUSTOMER"
@@ -71,6 +78,17 @@ function HomePage() {
     role === "CUSTOMER"
       ? "/customer/restaurants"
       : dashboardPath;
+
+  const roleLabel =
+    role === "CUSTOMER"
+      ? "Customer"
+      : role === "OWNER"
+        ? "Restaurant"
+        : role === "RIDER"
+          ? "Rider"
+          : role === "SUPER_ADMIN"
+            ? "Admin"
+            : "";
 
   return (
     <div className="food-page text-slate-950">
@@ -90,12 +108,24 @@ function HomePage() {
             Become a rider
           </Link>
           {token ? (
-            <Link
-              to={dashboardPath}
-              className="food-button-primary px-5 py-2 text-sm"
-            >
-              Dashboard
-            </Link>
+            <div className="flex items-center gap-2">
+              <span className="hidden rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 sm:inline-block">
+                {firstName ? `${firstName} (${roleLabel})` : roleLabel}
+              </span>
+              <Link
+                to={dashboardPath}
+                className="food-button-primary px-5 py-2 text-sm"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="food-button-secondary px-4 py-2 text-sm"
+              >
+                Log out
+              </button>
+            </div>
           ) : (
             <>
               <Link
