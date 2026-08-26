@@ -6,14 +6,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import { useCart } from "../../context/CartContext";
-import api from "../../api/axios";
-import {
-  getApiErrorMessage,
-} from "../../utils/apiError";
-
-interface ReverseGeocodeResponse {
-  displayName?: string;
-}
+import { reverseGeocodeLocation } from "../../utils/location";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -93,43 +86,17 @@ function CheckoutPage() {
         setDeliveryLatitude(latitude);
         setDeliveryLongitude(longitude);
 
-        try {
-          const response =
-            await api.get<ReverseGeocodeResponse>(
-              "/location/reverse",
-              {
-                params: {
-                  lat: latitude,
-                  lon: longitude,
-                },
-              }
-            );
-
-          const location =
-            response.data;
-
-          if (location.displayName) {
-            setDeliveryAddress(
-              location.displayName
-            );
-            setLocationMessage(
-              "Location detected. You can edit the address before continuing."
-            );
-          } else {
-            setLocationMessage(
-              "Coordinates detected. Please add delivery details before continuing."
-            );
-          }
-        } catch (addressError) {
-          console.error(
-            "Unable to read current location address:",
-            addressError
+        // Resolve readable street address and auto-fill delivery address
+        const resolvedAddress =
+          await reverseGeocodeLocation(
+            latitude,
+            longitude
           );
 
-          setLocationMessage(
-            getApiErrorMessage(addressError)
-          );
-        }
+        setDeliveryAddress(resolvedAddress);
+        setLocationMessage(
+          "Live location detected and delivery address filled! You can edit or add building details if needed."
+        );
 
       } catch (locationError) {
         console.error(
@@ -140,7 +107,7 @@ function CheckoutPage() {
         setDeliveryLatitude(null);
         setDeliveryLongitude(null);
         setError(
-          "Unable to detect your current location. Allow location access or enter your address manually."
+          "Unable to detect your current location. Please allow location access or enter your address manually."
         );
 
       } finally {
