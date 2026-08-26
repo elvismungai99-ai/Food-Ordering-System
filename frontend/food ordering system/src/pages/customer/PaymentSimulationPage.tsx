@@ -201,8 +201,10 @@ function PaymentSimulationPage() {
     return (
       <main className="min-h-screen bg-slate-100 p-6 flex items-center justify-center">
         <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl text-center border border-slate-200 animate-fadeIn">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-3xl animate-pulse">
-            📱
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 animate-pulse">
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
           </div>
 
           <h2 className="mt-5 text-2xl font-bold text-slate-900">
@@ -273,7 +275,7 @@ function PaymentSimulationPage() {
             <div className="flex justify-between">
               <span className="text-slate-500">Payment Method:</span>
               <span className="font-semibold text-slate-900">
-                {activeOrder.paymentMethod === "MPESA" ? "🟢 M-Pesa" : "💵 Cash on Delivery"}
+                {activeOrder.paymentMethod === "MPESA" ? "M-Pesa" : "Cash on Delivery"}
               </span>
             </div>
 
@@ -373,7 +375,7 @@ function PaymentSimulationPage() {
 
           {/* Delivery destination address */}
           <div className="mb-6 rounded-2xl bg-slate-50 p-4 text-xs text-slate-700 border border-slate-100">
-            <p className="font-bold text-slate-800 mb-1">📍 Delivery Address</p>
+            <p className="font-bold text-slate-800 mb-1">Delivery Address</p>
             <p>{deliveryAddress}</p>
             {hasDeliveryCoordinates && (
               <a
@@ -395,12 +397,12 @@ function PaymentSimulationPage() {
             {[
               {
                 value: "MPESA",
-                label: "🟢 M-Pesa STK Push (Recommended)",
+                label: "M-Pesa STK Push (Recommended)",
                 text: "Instant prompt on your Safaricom phone to enter PIN securely.",
               },
               {
                 value: "CASH_ON_DELIVERY",
-                label: "💵 Cash on Delivery",
+                label: "Cash on Delivery",
                 text: "Pay with cash or M-Pesa directly to the delivery rider.",
               },
             ].map((method) => (

@@ -211,8 +211,8 @@ function CheckoutPage() {
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
           {/* Left Column: Delivery Location Form */}
           <section className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <span>📍</span> 1. Delivery Destination
+            <h2 className="text-xl font-bold text-slate-900 mb-4">
+              1. Delivery Destination
             </h2>
 
             {/* Saved addresses selector */}
@@ -233,7 +233,6 @@ function CheckoutPage() {
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <span>{addr.label.toLowerCase().includes("work") ? "🏢" : "🏠"}</span>
                       <span>{addr.label}</span>
                       {addr.default && (
                         <span className="ml-1 rounded-full bg-emerald-200 px-1.5 py-0.2 text-[10px] text-emerald-800">
@@ -254,7 +253,7 @@ function CheckoutPage() {
                   onClick={handleUseCurrentLocation}
                   className="rounded-3xl border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 transition"
                 >
-                  {locating ? "Detecting GPS location..." : "📡 Use Live GPS Location"}
+                  {locating ? "Detecting GPS location..." : "Use Live GPS Location"}
                 </button>
 
                 {deliveryLatitude !== null && deliveryLongitude !== null && (
@@ -353,18 +352,18 @@ function CheckoutPage() {
               </div>
 
               <div className="flex justify-between">
-                <span>🛵 Delivery Fee</span>
+                <span>Delivery Fee</span>
                 <span>{formatPrice(deliveryFee)}</span>
               </div>
 
               <div className="flex justify-between">
-                <span>⚙️ Service Fee</span>
+                <span>Service Fee</span>
                 <span>{formatPrice(serviceFee)}</span>
               </div>
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>🏷️ Discount</span>
+                  <span>Discount</span>
                   <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}

@@ -313,7 +313,7 @@ function CustomerProfilePage() {
                 : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            👤 Personal Details
+            Personal Details
           </button>
 
           <button
@@ -328,7 +328,7 @@ function CustomerProfilePage() {
                 : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            📍 Saved Addresses ({savedAddresses.length})
+            Saved Addresses ({savedAddresses.length})
           </button>
 
           <button
@@ -343,7 +343,7 @@ function CustomerProfilePage() {
                 : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
             }`}
           >
-            🔒 Password & Security
+            Password & Security
           </button>
         </div>
 
@@ -445,7 +445,6 @@ function CustomerProfilePage() {
 
             {savedAddresses.length === 0 ? (
               <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center text-slate-500">
-                <p className="text-3xl mb-2">🏠</p>
                 <p className="font-semibold text-slate-700">No saved addresses yet.</p>
                 <p className="text-xs text-slate-400 mt-1">
                   Add your home or office address to checkout in seconds!
@@ -462,9 +461,8 @@ function CustomerProfilePage() {
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <span>{addr.label.toLowerCase().includes("work") ? "🏢" : "🏠"}</span>
-                          <span>{addr.label}</span>
+                        <span className="font-bold text-slate-900">
+                          {addr.label}
                         </span>
 
                         {addr.default ? (
@@ -612,9 +610,9 @@ function CustomerProfilePage() {
                       onChange={(e) => setNewAddressLabel(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 p-2.5 text-sm"
                     >
-                      <option value="Home">🏠 Home</option>
-                      <option value="Work">🏢 Work</option>
-                      <option value="Other">📍 Other</option>
+                      <option value="Home">Home</option>
+                      <option value="Work">Work</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
 
@@ -625,7 +623,7 @@ function CustomerProfilePage() {
                       onClick={handleDetectAddressLocation}
                       className="w-full rounded-xl border border-indigo-200 bg-indigo-50 p-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:bg-slate-100 transition"
                     >
-                      {locatingAddress ? "Detecting GPS..." : "📡 Use Live GPS"}
+                      {locatingAddress ? "Detecting GPS..." : "Use Live GPS"}
                     </button>
                   </div>
                 </div>

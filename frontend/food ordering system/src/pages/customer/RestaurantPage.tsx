@@ -354,17 +354,15 @@ function RestaurantPage() {
 
                       <div className="space-y-2 text-xs text-slate-500">
                         <p>
-                          📍{" "}
                           {restaurant.address ||
                             "Address not provided"}
                         </p>
 
                         <p>
-                          🕐{" "}
                           {formatTime(
                             restaurant.openingTime
-                          )}
-                          {" — "}
+                          )}{" "}
+                          -{" "}
                           {formatTime(
                             restaurant.closingTime
                           )}

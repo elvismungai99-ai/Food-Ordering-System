@@ -696,17 +696,17 @@ function RestaurantOrdersPage() {
                               <div className="mt-1 flex flex-wrap gap-1.5">
                                 {item.selectedSize && (
                                   <span className="rounded bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                                    📏 {item.selectedSize}
+                                    Size: {item.selectedSize}
                                   </span>
                                 )}
                                 {item.selectedAddOns && item.selectedAddOns.length > 0 && (
                                   <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                                    🧀 +{item.selectedAddOns.join(", ")}
+                                    +{item.selectedAddOns.join(", ")}
                                   </span>
                                 )}
                                 {item.removalRequests && item.removalRequests.length > 0 && (
                                   <span className="rounded bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-                                    🚫 {item.removalRequests.join(", ")}
+                                    {item.removalRequests.join(", ")}
                                   </span>
                                 )}
                               </div>

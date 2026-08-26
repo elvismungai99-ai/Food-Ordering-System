@@ -245,17 +245,17 @@ function CartPage() {
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {item.selectedSize && (
                               <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                                📏 {item.selectedSize}
+                                Size: {item.selectedSize}
                               </span>
                             )}
                             {item.selectedAddOns && item.selectedAddOns.length > 0 && (
                               <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                                🧀 +{item.selectedAddOns.join(", ")}
+                                +{item.selectedAddOns.join(", ")}
                               </span>
                             )}
                             {item.removalRequests && item.removalRequests.length > 0 && (
                               <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-                                🚫 {item.removalRequests.join(", ")}
+                                {item.removalRequests.join(", ")}
                               </span>
                             )}
                           </div>
@@ -391,18 +391,18 @@ function CartPage() {
                 </div>
 
                 <div className="flex justify-between text-sm text-slate-600">
-                  <span>🛵 Estimated Delivery Fee</span>
+                  <span>Estimated Delivery Fee</span>
                   <span>{formatPrice(deliveryFee)}</span>
                 </div>
 
                 <div className="flex justify-between text-sm text-slate-600">
-                  <span>⚙️ Service Fee</span>
+                  <span>Service Fee</span>
                   <span>{formatPrice(serviceFee)}</span>
                 </div>
 
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-emerald-600 font-semibold">
-                    <span>🏷️ Discount Applied</span>
+                    <span>Discount Applied</span>
                     <span>-{formatPrice(discountAmount)}</span>
                   </div>
                 )}

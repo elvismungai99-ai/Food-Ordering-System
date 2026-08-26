@@ -325,23 +325,20 @@ function OrderDetailPage() {
         {/* Live Order ETA Alert if active */}
         {isTrackable && (
           <div className="mb-8 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl animate-bounce">🛵</span>
-              <div>
-                <h3 className="font-bold text-indigo-950">
-                  {order.status === "OUT_FOR_DELIVERY"
-                    ? "Rider is heading to your doorstep!"
-                    : order.status === "PREPARING"
-                    ? "Kitchen is preparing your meal fresh"
-                    : "Order is confirmed and queued"}
-                </h3>
-                <p className="text-xs text-indigo-700 mt-0.5">
-                  Estimated Delivery:{" "}
-                  <span className="font-bold text-indigo-900">
-                    ~{tracking?.estimatedDeliveryMinutes ?? 25} minutes
-                  </span>
-                </p>
-              </div>
+            <div>
+              <h3 className="font-bold text-indigo-950">
+                {order.status === "OUT_FOR_DELIVERY"
+                  ? "Rider is heading to your doorstep!"
+                  : order.status === "PREPARING"
+                  ? "Kitchen is preparing your meal fresh"
+                  : "Order is confirmed and queued"}
+              </h3>
+              <p className="text-xs text-indigo-700 mt-0.5">
+                Estimated Delivery:{" "}
+                <span className="font-bold text-indigo-900">
+                  ~{tracking?.estimatedDeliveryMinutes ?? 25} minutes
+                </span>
+              </p>
             </div>
 
             <div className="text-xs font-semibold text-indigo-600 bg-white px-3 py-1.5 rounded-full border border-indigo-100">
@@ -437,8 +434,8 @@ function OrderDetailPage() {
         {isTrackable && (
           <section className="mt-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2">
-                <span>🛰️</span> Live Tracking & Progress
+              <h2 className="text-xl font-bold text-slate-950">
+                Live Tracking & Progress
               </h2>
               <span className="text-xs text-slate-400">
                 {isRefreshing ? "Updating..." : "Auto-refreshes every 10s"}
@@ -506,10 +503,6 @@ function OrderDetailPage() {
             {/* Assigned Rider Card */}
             {tracking?.riderAssigned ? (
               <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/80 p-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-2xl text-white shadow-sm">
-                  🛵
-                </div>
-
                 <div className="flex-1">
                   <p className="font-bold text-slate-900">{tracking.riderName}</p>
                   <p className="text-xs text-slate-600">
@@ -529,13 +522,13 @@ function OrderDetailPage() {
                     href={`tel:${tracking.riderPhoneNumber}`}
                     className="rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-indigo-700 transition"
                   >
-                    📞 Call Rider
+                    Call Rider
                   </a>
                 )}
               </div>
             ) : (
               <p className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500 text-center border border-slate-100">
-                ⏳ Rider will be dispatched as soon as the kitchen completes preparation...
+                Rider will be dispatched as soon as the kitchen completes preparation...
               </p>
             )}
           </section>
@@ -572,17 +565,17 @@ function OrderDetailPage() {
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {item.selectedSize && (
                       <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                        📏 {item.selectedSize}
+                        Size: {item.selectedSize}
                       </span>
                     )}
                     {item.selectedAddOns && item.selectedAddOns.length > 0 && (
                       <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                        🧀 +{item.selectedAddOns.join(", ")}
+                        +{item.selectedAddOns.join(", ")}
                       </span>
                     )}
                     {item.removalRequests && item.removalRequests.length > 0 && (
                       <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-                        🚫 {item.removalRequests.join(", ")}
+                        {item.removalRequests.join(", ")}
                       </span>
                     )}
                   </div>
@@ -626,18 +619,18 @@ function OrderDetailPage() {
             </div>
 
             <div className="flex justify-between">
-              <span>🛵 Delivery Fee:</span>
+              <span>Delivery Fee:</span>
               <span>{formatPrice(order.deliveryFee)}</span>
             </div>
 
             <div className="flex justify-between">
-              <span>⚙️ Service Fee:</span>
+              <span>Service Fee:</span>
               <span>{formatPrice(order.serviceFee)}</span>
             </div>
 
             {order.discountAmount > 0 && (
               <div className="flex justify-between text-emerald-600 font-semibold">
-                <span>🏷️ Discount:</span>
+                <span>Discount:</span>
                 <span>-{formatPrice(order.discountAmount)}</span>
               </div>
             )}
@@ -689,7 +682,7 @@ function OrderDetailPage() {
                 >
                   {[5, 4, 3, 2, 1].map((val) => (
                     <option key={val} value={val}>
-                      {"⭐".repeat(val)} ({val} Star{val > 1 ? "s" : ""})
+                      {val} Star{val > 1 ? "s" : ""}
                     </option>
                   ))}
                 </select>

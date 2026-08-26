@@ -204,7 +204,7 @@ function OpenStreetMapFallback({
         loading="lazy"
       />
       <div className="absolute bottom-2 right-2 rounded-lg bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm">
-        📍 Live GPS Tracking (OpenStreetMap)
+        Live GPS Tracking (OpenStreetMap)
       </div>
     </div>
   );

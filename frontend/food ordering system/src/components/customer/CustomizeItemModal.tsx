@@ -142,8 +142,8 @@ export const CustomizeItemModal: React.FC<CustomizeItemModalProps> = ({
 
           {/* 1. Size Selection */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
-              <span>📏</span> 1. Choose Size
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3">
+              1. Choose Size
             </h4>
             <div className="grid grid-cols-3 gap-2">
               {SIZE_OPTIONS.map((opt) => (
@@ -165,8 +165,8 @@ export const CustomizeItemModal: React.FC<CustomizeItemModalProps> = ({
 
           {/* 2. Extra Add-ons / Toppings */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
-              <span>🧀</span> 2. Extra Toppings & Add-ons
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3">
+              2. Extra Toppings & Add-ons
             </h4>
             <div className="space-y-2">
               {DEFAULT_ADDONS.map((addOn) => {
@@ -202,8 +202,8 @@ export const CustomizeItemModal: React.FC<CustomizeItemModalProps> = ({
 
           {/* 3. Removal Requests */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-1.5">
-              <span>🚫</span> 3. Ingredients to Remove
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-3">
+              3. Ingredients to Remove
             </h4>
             <div className="grid grid-cols-2 gap-2">
               {COMMON_REMOVALS.map((rem) => {
@@ -232,8 +232,8 @@ export const CustomizeItemModal: React.FC<CustomizeItemModalProps> = ({
 
           {/* 4. Special Preparation Instructions */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-2 flex items-center gap-1.5">
-              <span>📝</span> 4. Special Preparation Notes
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-700 mb-2">
+              4. Special Preparation Notes
             </h4>
             <textarea
               rows={2}

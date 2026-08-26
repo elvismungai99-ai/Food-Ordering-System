@@ -574,18 +574,15 @@ function RestaurantMenuPage() {
                                 || addingItemId === menuItem.id
                               }
                               onClick={() => handleOpenCustomize(menuItem)}
-                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition shadow-sm flex items-center justify-center gap-2"
+                              className="mt-5 w-full rounded-3xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition shadow-sm"
                             >
-                              <span>✨</span>
-                              <span>
-                                {addingItemId === menuItem.id
-                                  ? "Adding..."
-                                  : restaurant?.openNow === false
-                                  ? "Restaurant Closed"
-                                  : menuItem.available
-                                  ? "Customize & Add"
-                                  : "Unavailable"}
-                              </span>
+                              {addingItemId === menuItem.id
+                                ? "Adding..."
+                                : restaurant?.openNow === false
+                                ? "Restaurant Closed"
+                                : menuItem.available
+                                ? "Customize & Add"
+                                : "Unavailable"}
                             </button>
                           </div>
                         </article>
