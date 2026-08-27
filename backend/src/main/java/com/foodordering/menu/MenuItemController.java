@@ -8,12 +8,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.foodordering.common.exception.ForbiddenOperationException;
@@ -265,6 +267,36 @@ public class MenuItemController {
         return ResponseEntity.ok(
                 toDto(saved)
         );
+    }
+
+    @PatchMapping("/{menuItemId}/availability")
+    public ResponseEntity<MenuItemDto> toggleAvailability(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable UUID menuItemId,
+            @RequestParam(name = "available", required = false) Boolean available,
+            @RequestBody(required = false) java.util.Map<String, Object> body
+    ) {
+        UUID ownerId = extractUserId(authHeader);
+        Restaurant restaurant = restaurantRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found for this owner"));
+
+        MenuItem item = menuItemRepository.findById(menuItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Menu item not found"));
+
+        validateMenuOwnership(item, restaurant);
+
+        boolean newAvailable;
+        if (available != null) {
+            newAvailable = available;
+        } else if (body != null && body.containsKey("available")) {
+            newAvailable = Boolean.parseBoolean(String.valueOf(body.get("available")));
+        } else {
+            newAvailable = !item.isAvailable();
+        }
+
+        item.setAvailable(newAvailable);
+        MenuItem saved = menuItemRepository.save(item);
+        return ResponseEntity.ok(toDto(saved));
     }
 
     private MenuItemDto toDto(

@@ -34,6 +34,7 @@ import {
   type DeliveryRequest,
   type Rider,
 } from "../../services/RiderService";
+import CancellationModal from "../../components/common/CancellationModal";
 
 const activeDeliveryStatuses = new Set([
   "REQUESTED",
@@ -108,6 +109,16 @@ function RestaurantOrdersPage() {
     deliveryRequests,
     setDeliveryRequests,
   ] = useState<DeliveryRequest[]>([]);
+
+  const [
+    cancellingOrderId,
+    setCancellingOrderId,
+  ] = useState<string | null>(null);
+
+  const [
+    cancelling,
+    setCancelling,
+  ] = useState(false);
 
   const loadOrders =
     useCallback(async () => {
@@ -290,6 +301,24 @@ function RestaurantOrdersPage() {
         setUpdatingOrderId(null);
       }
     };
+
+  const handleConfirmRestaurantCancellation = async (reason: string) => {
+    if (!cancellingOrderId) return;
+    try {
+      setCancelling(true);
+      setError("");
+      const updated = await cancelRestaurantOrder(cancellingOrderId, reason);
+      setOrders((current) =>
+        current.map((o) => (o.id === cancellingOrderId ? updated : o))
+      );
+      setCancellingOrderId(null);
+    } catch (requestError) {
+      console.error("Failed to cancel order:", requestError);
+      setError("Unable to cancel / reject this order.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const handleDispatchRider =
     async (
@@ -750,21 +779,17 @@ function RestaurantOrdersPage() {
                           </button>
 
                           {(order.status === "PENDING"
-                            || order.status === "CONFIRMED") && (
+                            || order.status === "CONFIRMED"
+                            || order.status === "PREPARING") && (
                             <button
                               type="button"
                               disabled={
-                                updatingOrderId
-                                  === order.id
+                                updatingOrderId === order.id || cancelling
                               }
-                              onClick={() =>
-                                handleCancelOrder(
-                                  order
-                                )
-                              }
-                              className="rounded-3xl border border-red-300 px-6 py-3 text-sm font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => setCancellingOrderId(order.id)}
+                              className="rounded-3xl border border-red-300 px-6 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 transition"
                             >
-                              Cancel Order
+                              Reject / Cancel Order
                             </button>
                           )}
 
@@ -892,6 +917,23 @@ function RestaurantOrdersPage() {
           </div>
         )}
 
+        {/* Restaurant Order Cancellation / Rejection Modal */}
+        <CancellationModal
+          isOpen={cancellingOrderId !== null}
+          isSubmitting={cancelling}
+          title="Reject / Cancel Order"
+          description="Select the reason for rejecting or cancelling this customer order."
+          confirmLabel="Reject Order"
+          presetReasons={[
+            "Kitchen is at maximum capacity",
+            "Out of stock item(s)",
+            "Restaurant closing early",
+            "Customer requested order cancellation",
+            "Delivery address out of delivery radius",
+          ]}
+          onClose={() => setCancellingOrderId(null)}
+          onConfirm={handleConfirmRestaurantCancellation}
+        />
       </div>
 
     </main>

@@ -352,14 +352,30 @@ function RestaurantPage() {
                           "No description available."}
                       </p>
 
-                      <div className="space-y-2 text-xs text-slate-500">
-                        <p>
+                      {/* Pre-order restaurant metadata */}
+                      <div className="mb-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center text-[11px] font-medium text-slate-600 border border-slate-100">
+                        <div>
+                          <span className="block text-slate-400 font-normal">Est. Delivery</span>
+                          <span className="font-bold text-slate-800">25-35 min</span>
+                        </div>
+                        <div className="border-x border-slate-200">
+                          <span className="block text-slate-400 font-normal">Delivery Fee</span>
+                          <span className="font-bold text-slate-800">KES 150</span>
+                        </div>
+                        <div>
+                          <span className="block text-slate-400 font-normal">Min. Order</span>
+                          <span className="font-bold text-slate-800">KES 200</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-500">
+                        <p className="truncate">
                           {restaurant.address ||
                             "Address not provided"}
                         </p>
 
-                        <p>
-                          {formatTime(
+                        <p className="font-medium text-slate-600">
+                          Hours: {formatTime(
                             restaurant.openingTime
                           )}{" "}
                           -{" "}

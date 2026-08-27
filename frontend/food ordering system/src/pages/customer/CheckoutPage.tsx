@@ -6,9 +6,12 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
+import CustomerHeader from "../../components/customer/CustomerHeader";
 import { useCart } from "../../context/CartContext";
 import { reverseGeocodeLocation } from "../../utils/location";
 import { getSavedAddresses, type SavedAddress } from "../../services/UserService";
+
+const CHECKOUT_DRAFT_KEY = "checkoutDraft_v1";
 
 function CheckoutPage() {
   const navigate = useNavigate();
@@ -28,16 +31,34 @@ function CheckoutPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Load draft if previously stored
+    try {
+      const savedDraft = localStorage.getItem(CHECKOUT_DRAFT_KEY);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.deliveryAddress) setDeliveryAddress(parsed.deliveryAddress);
+        if (parsed.deliveryInstructions) setDeliveryInstructions(parsed.deliveryInstructions);
+        if (parsed.deliveryLatitude) setDeliveryLatitude(parsed.deliveryLatitude);
+        if (parsed.deliveryLongitude) setDeliveryLongitude(parsed.deliveryLongitude);
+        if (parsed.selectedAddressId) setSelectedAddressId(parsed.selectedAddressId);
+      }
+    } catch (e) {
+      console.warn("Could not parse draft:", e);
+    }
+
     // Load saved customer delivery addresses
     const loadAddresses = async () => {
       try {
         const list = await getSavedAddresses();
         setSavedAddresses(list);
 
-        // Auto-select default address if available
-        const defaultAddr = list.find((a) => a.default) || list[0];
-        if (defaultAddr) {
-          applyAddress(defaultAddr);
+        // Auto-select default address if no draft was present
+        const savedDraft = localStorage.getItem(CHECKOUT_DRAFT_KEY);
+        if (!savedDraft) {
+          const defaultAddr = list.find((a) => a.default) || list[0];
+          if (defaultAddr) {
+            applyAddress(defaultAddr);
+          }
         }
       } catch (err) {
         console.warn("Could not load saved addresses:", err);
@@ -46,6 +67,22 @@ function CheckoutPage() {
 
     loadAddresses();
   }, []);
+
+  // Save draft whenever address or notes change
+  useEffect(() => {
+    if (deliveryAddress || deliveryInstructions) {
+      localStorage.setItem(
+        CHECKOUT_DRAFT_KEY,
+        JSON.stringify({
+          deliveryAddress,
+          deliveryInstructions,
+          deliveryLatitude,
+          deliveryLongitude,
+          selectedAddressId,
+        })
+      );
+    }
+  }, [deliveryAddress, deliveryInstructions, deliveryLatitude, deliveryLongitude, selectedAddressId]);
 
   const applyAddress = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
@@ -186,15 +223,21 @@ function CheckoutPage() {
 
   if (!cart) {
     return (
-      <div className="min-h-screen bg-slate-100 p-8">
-        <p className="text-center text-slate-500">Loading checkout...</p>
+      <div className="min-h-screen bg-slate-100">
+        <CustomerHeader />
+        <div className="flex h-96 items-center justify-center text-slate-500">
+          Loading checkout...
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
-      <div className="mx-auto max-w-4xl">
+    <div className="min-h-screen bg-slate-100">
+      <CustomerHeader />
+
+      <main className="p-6 md:p-8">
+        <div className="mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-950">Checkout</h1>
           <p className="mt-2 text-slate-500">
@@ -382,6 +425,7 @@ function CheckoutPage() {
         </div>
       </div>
     </main>
+  </div>
   );
 }
 

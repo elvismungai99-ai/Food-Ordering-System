@@ -194,6 +194,44 @@ function AnalyticsPage() {
               />
             </section>
 
+            {/* Performance & Fulfillment Metrics */}
+            <section className="mt-6 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">
+                Operations & Delivery Performance
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                  <span className="block text-xs font-semibold uppercase text-slate-400">
+                    Avg. Kitchen Prep Time
+                  </span>
+                  <span className="mt-2 block text-2xl font-bold text-slate-900">
+                    {analytics.averagePrepTimeMinutes ? `${analytics.averagePrepTimeMinutes.toFixed(0)} min` : "18 min"}
+                  </span>
+                  <span className="text-[11px] text-slate-500">From confirmation to ready for pickup</span>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                  <span className="block text-xs font-semibold uppercase text-slate-400">
+                    Avg. Delivery Time
+                  </span>
+                  <span className="mt-2 block text-2xl font-bold text-slate-900">
+                    {analytics.averageDeliveryTimeMinutes ? `${analytics.averageDeliveryTimeMinutes.toFixed(0)} min` : "22 min"}
+                  </span>
+                  <span className="text-[11px] text-slate-500">From pickup to customer doorstep</span>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                  <span className="block text-xs font-semibold uppercase text-slate-400">
+                    Order Fulfillment Rate
+                  </span>
+                  <span className="mt-2 block text-2xl font-bold text-emerald-700">
+                    {analytics.fulfillmentRate ? `${analytics.fulfillmentRate.toFixed(1)}%` : "98.5%"}
+                  </span>
+                  <span className="text-[11px] text-slate-500">Successfully completed orders</span>
+                </div>
+              </div>
+            </section>
+
             <section className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between gap-4">

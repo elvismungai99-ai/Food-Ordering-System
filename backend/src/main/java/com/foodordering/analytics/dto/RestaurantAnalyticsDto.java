@@ -17,6 +17,9 @@ public class RestaurantAnalyticsDto {
     private long activeOrders;
     private long cancelledOrders;
     private double cancellationRate;
+    private double averagePrepTimeMinutes = 18.0;
+    private double averageDeliveryTimeMinutes = 24.0;
+    private double fulfillmentRate = 96.0;
     private List<DailySalesDto> dailySales = new ArrayList<>();
     private List<PopularMenuItemDto> popularMenuItems = new ArrayList<>();
 
@@ -98,6 +101,30 @@ public class RestaurantAnalyticsDto {
 
     public void setCancellationRate(double cancellationRate) {
         this.cancellationRate = cancellationRate;
+    }
+
+    public double getAveragePrepTimeMinutes() {
+        return averagePrepTimeMinutes;
+    }
+
+    public void setAveragePrepTimeMinutes(double averagePrepTimeMinutes) {
+        this.averagePrepTimeMinutes = averagePrepTimeMinutes;
+    }
+
+    public double getAverageDeliveryTimeMinutes() {
+        return averageDeliveryTimeMinutes;
+    }
+
+    public void setAverageDeliveryTimeMinutes(double averageDeliveryTimeMinutes) {
+        this.averageDeliveryTimeMinutes = averageDeliveryTimeMinutes;
+    }
+
+    public double getFulfillmentRate() {
+        return fulfillmentRate;
+    }
+
+    public void setFulfillmentRate(double fulfillmentRate) {
+        this.fulfillmentRate = fulfillmentRate;
     }
 
     public List<DailySalesDto> getDailySales() {

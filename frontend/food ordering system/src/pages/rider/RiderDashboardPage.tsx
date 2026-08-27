@@ -29,6 +29,7 @@ import {
 import {
   getApiErrorMessage,
 } from "../../utils/apiError";
+import CancellationModal from "../../components/common/CancellationModal";
 
 function RiderDashboardPage() {
   const navigate =
@@ -48,6 +49,16 @@ function RiderDashboardPage() {
     error,
     setError,
   ] = useState("");
+
+  const [
+    rejectingRequest,
+    setRejectingRequest,
+  ] = useState<DeliveryRequest | null>(null);
+
+  const [
+    rejecting,
+    setRejecting,
+  ] = useState(false);
 
   const loadDashboard = async () => {
     try {
@@ -269,26 +280,31 @@ function RiderDashboardPage() {
     );
   };
 
-  const handleReject = async (
+  const handleReject = (
     request: DeliveryRequest
   ) => {
-    const reason =
-      window.prompt(
-        "Enter reason for rejecting this delivery"
+    setRejectingRequest(request);
+  };
+
+  const handleConfirmReject = async (reason: string) => {
+    if (!rejectingRequest) return;
+    try {
+      setRejecting(true);
+      setError("");
+      updateRequest(
+        await rejectDeliveryRequest(
+          rejectingRequest.id,
+          reason.trim()
+        )
       );
-
-    if (!reason?.trim()) {
-      return;
+      setRejectingRequest(null);
+      await loadDashboard();
+    } catch (requestError) {
+      console.error("Failed to reject delivery request:", requestError);
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setRejecting(false);
     }
-
-    updateRequest(
-      await rejectDeliveryRequest(
-        request.id,
-        reason.trim()
-      )
-    );
-
-    await loadDashboard();
   };
 
   const logout = () => {
@@ -501,6 +517,24 @@ function RiderDashboardPage() {
             </section>
           </>
         )}
+
+        {/* Rider Rejection Modal */}
+        <CancellationModal
+          isOpen={rejectingRequest !== null}
+          isSubmitting={rejecting}
+          title="Decline Delivery Request"
+          description="Please choose or specify the reason for declining this request so it can be reassigned."
+          confirmLabel="Decline Request"
+          presetReasons={[
+            "Vehicle issue / flat tyre",
+            "Too far from pickup restaurant",
+            "Severe traffic / weather conditions",
+            "End of work shift",
+            "Safety concern in area",
+          ]}
+          onClose={() => setRejectingRequest(null)}
+          onConfirm={handleConfirmReject}
+        />
       </div>
     </main>
   );

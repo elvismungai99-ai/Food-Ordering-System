@@ -18,6 +18,7 @@ import {
 
 import { useCart } from "../../context/CartContext";
 import { buildGoogleMapsPlaceUrl } from "../../utils/location";
+import CustomerHeader from "../../components/customer/CustomerHeader";
 
 type PaymentFlowState =
   | "IDLE"
@@ -157,6 +158,7 @@ function PaymentSimulationPage() {
       sessionStorage.removeItem("checkoutDeliveryLatitude");
       sessionStorage.removeItem("checkoutDeliveryLongitude");
       sessionStorage.removeItem("checkoutPricing");
+      localStorage.removeItem("checkoutDraft_v1");
 
       if (paymentMethod === "CASH_ON_DELIVERY") {
         setFlowState("PAID_SUCCESS");

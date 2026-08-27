@@ -27,6 +27,9 @@ export interface RestaurantAnalytics {
   activeOrders: number;
   cancelledOrders: number;
   cancellationRate: number;
+  averagePrepTimeMinutes?: number;
+  averageDeliveryTimeMinutes?: number;
+  fulfillmentRate?: number;
   dailySales: DailySales[];
   popularMenuItems: PopularMenuItem[];
 }

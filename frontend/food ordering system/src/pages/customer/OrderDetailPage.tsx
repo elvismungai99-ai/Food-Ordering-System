@@ -21,6 +21,8 @@ import { useOrderTracking } from "../../hooks/useOrderTracking";
 import { LiveTrackingMap } from "../../components/customer/LiveTrackingMap";
 import { createReview } from "../../services/ReviewService";
 import { buildGoogleMapsPlaceUrl } from "../../utils/location";
+import CustomerHeader from "../../components/customer/CustomerHeader";
+import CancellationModal from "../../components/common/CancellationModal";
 
 function OrderDetailPage() {
   const navigate = useNavigate();
@@ -43,6 +45,10 @@ function OrderDetailPage() {
   const [retryingPayment, setRetryingPayment] = useState(false);
   const [retryPhone, setRetryPhone] = useState("");
   const [showRetryModal, setShowRetryModal] = useState(false);
+
+  // Cancellation modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   /*
    * Live tracking: polls the tracking
@@ -138,20 +144,21 @@ function OrderDetailPage() {
     });
   };
 
-  const handleCancelOrder = async () => {
+  const handleConfirmCancellation = async (reason: string) => {
     if (!order) return;
 
-    const reason = window.prompt("Enter the cancellation reason");
-    if (!reason?.trim()) return;
-
     try {
+      setCancellingOrder(true);
       setError("");
       const updatedOrder = await cancelCustomerOrder(order.id, reason.trim());
       setOrder(updatedOrder);
+      setShowCancelModal(false);
       setSuccessMessage("Order cancelled successfully.");
     } catch (requestError) {
       console.error("Failed to cancel order:", requestError);
       setError("Unable to cancel this order.");
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -206,24 +213,30 @@ function OrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">Loading order details...</p>
+      <div className="min-h-screen bg-slate-100">
+        <CustomerHeader />
+        <div className="flex h-96 items-center justify-center text-slate-500">
+          Loading order details...
+        </div>
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-slate-100 p-8">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6">
-          <p className="text-red-700">{error || "Order not found."}</p>
-          <button
-            type="button"
-            onClick={() => navigate("/customer/orders")}
-            className="mt-5 rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white"
-          >
-            Back to Orders
-          </button>
+      <div className="min-h-screen bg-slate-100">
+        <CustomerHeader />
+        <div className="p-8">
+          <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6">
+            <p className="text-red-700">{error || "Order not found."}</p>
+            <button
+              type="button"
+              onClick={() => navigate("/customer/orders")}
+              className="mt-5 rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white"
+            >
+              Back to Orders
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -270,45 +283,48 @@ function OrderDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
-      <div className="mx-auto max-w-5xl">
-        {/* Header */}
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <button
-              type="button"
-              onClick={() => navigate("/customer/orders")}
-              className="mb-4 text-sm font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1"
-            >
-              ← Back to Orders
-            </button>
+    <div className="min-h-screen bg-slate-100">
+      <CustomerHeader />
 
-            <h1 className="text-3xl font-bold text-slate-950">Order Details</h1>
-            <p className="mt-1 text-slate-500 font-mono text-xs">
-              Order ID: #{order.id}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <span
-              className={`rounded-full px-4 py-2 text-sm font-bold uppercase tracking-wider ${getStatusBadgeClass(
-                order.status
-              )}`}
-            >
-              {formatStatus(order.status)}
-            </span>
-
-            {order.status === "PENDING" && (
+      <main className="p-6 md:p-8">
+        <div className="mx-auto max-w-5xl">
+          {/* Header */}
+          <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+            <div>
               <button
                 type="button"
-                onClick={handleCancelOrder}
-                className="rounded-3xl border border-red-300 px-5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition"
+                onClick={() => navigate("/customer/orders")}
+                className="mb-4 text-sm font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1"
               >
-                Cancel Order
+                ← Back to Orders
               </button>
-            )}
+
+              <h1 className="text-3xl font-bold text-slate-950">Order Details</h1>
+              <p className="mt-1 text-slate-500 font-mono text-xs">
+                Order ID: #{order.id}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <span
+                className={`rounded-full px-4 py-2 text-sm font-bold uppercase tracking-wider ${getStatusBadgeClass(
+                  order.status
+                )}`}
+              >
+                {formatStatus(order.status)}
+              </span>
+
+              {order.status === "PENDING" && (
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="rounded-3xl border border-red-300 px-5 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition"
+                >
+                  Cancel Order
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -751,8 +767,20 @@ function OrderDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Order Cancellation Modal */}
+        <CancellationModal
+          isOpen={showCancelModal}
+          isSubmitting={cancellingOrder}
+          title="Cancel This Order"
+          description="Are you sure you want to cancel this order? Once cancelled, this cannot be undone."
+          confirmLabel="Yes, Cancel Order"
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleConfirmCancellation}
+        />
       </div>
     </main>
+  </div>
   );
 }
 

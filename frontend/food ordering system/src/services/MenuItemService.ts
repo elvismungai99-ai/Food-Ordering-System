@@ -111,3 +111,23 @@ export async function deleteMenuItem(
     "Unable to delete the menu item."
   );
 }
+
+/*
+ * Restaurant owner:
+ * Toggle availability of an existing menu item.
+ */
+export async function toggleMenuItemAvailability(
+  menuItemId: string,
+  available?: boolean
+): Promise<MenuItem> {
+  return requestData(
+    () =>
+      api.patch<MenuItem>(
+        `/menu-items/${menuItemId}/availability${
+          available !== undefined ? `?available=${available}` : ""
+        }`
+      ),
+    "Unable to toggle item availability."
+  );
+}
+

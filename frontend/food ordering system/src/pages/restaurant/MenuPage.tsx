@@ -15,6 +15,7 @@ import {
   deleteMenuItem,
   getRestaurantMenu,
   updateMenuItem,
+  toggleMenuItemAvailability,
   type MenuItem,
   type MenuItemRequest,
 } from "../../services/MenuItemService";
@@ -104,6 +105,13 @@ function MenuPage() {
   const [
     deletingItemId,
     setDeletingItemId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    togglingItemId,
+    setTogglingItemId,
   ] = useState<
     string | null
   >(null);
@@ -647,6 +655,40 @@ function MenuPage() {
     }
   };
 
+  const handleToggleAvailability = async (
+    menuItem: MenuItem
+  ) => {
+    try {
+      setTogglingItemId(menuItem.id);
+      setError("");
+      setSuccessMessage("");
+
+      const updated = await toggleMenuItemAvailability(
+        menuItem.id,
+        !menuItem.available
+      );
+
+      setMenuItems((current) =>
+        current.map((item) =>
+          item.id === menuItem.id
+            ? { ...item, available: updated.available }
+            : item
+        )
+      );
+
+      setSuccessMessage(
+        `"${menuItem.name}" is now marked as ${
+          updated.available ? "Available" : "Unavailable"
+        }.`
+      );
+    } catch (requestError) {
+      console.error("Failed to toggle availability:", requestError);
+      setError(getApiErrorMessage(requestError));
+    } finally {
+      setTogglingItemId(null);
+    }
+  };
+
   const formatPrice = (
     amount: number
   ) => {
@@ -1169,13 +1211,34 @@ function MenuPage() {
                         }
                       </p>
 
-                      <p className="mt-2 text-sm text-slate-500">
-                        {
-                          menuItem.available
-                            ? "Available"
-                            : "Unavailable"
-                        }
-                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            menuItem.available
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {menuItem.available ? "Available" : "Unavailable"}
+                        </span>
+
+                        <button
+                          type="button"
+                          disabled={togglingItemId === menuItem.id}
+                          onClick={() => handleToggleAvailability(menuItem)}
+                          className={`rounded-xl px-2.5 py-1 text-xs font-semibold border transition ${
+                            menuItem.available
+                              ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                              : "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                          }`}
+                        >
+                          {togglingItemId === menuItem.id
+                            ? "Updating..."
+                            : menuItem.available
+                            ? "Mark Out of Stock"
+                            : "Mark Available"}
+                        </button>
+                      </div>
 
                       {menuItem.addOns
                         && menuItem.addOns.length > 0 && (

@@ -156,6 +156,19 @@ public class RiderController {
         );
     }
 
+    @PostMapping("/delivery-requests/{requestId}/timeout")
+    public ResponseEntity<DeliveryRequestDto> timeoutRequest(
+            @RequestHeader("Authorization")
+            String authHeader,
+
+            @PathVariable
+            UUID requestId
+    ) {
+        return ResponseEntity.ok(
+                riderService.timeoutAndReassignRequest(requestId)
+        );
+    }
+
     @PatchMapping("/delivery-requests/{requestId}/arrived-restaurant")
     public ResponseEntity<DeliveryRequestDto> markArrivedAtRestaurant(
             @RequestHeader("Authorization")

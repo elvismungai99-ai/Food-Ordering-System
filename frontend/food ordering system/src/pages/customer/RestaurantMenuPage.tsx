@@ -33,6 +33,7 @@ import {
   CustomizeItemModal,
   type CustomizationOption,
 } from "../../components/customer/CustomizeItemModal";
+import CustomerHeader from "../../components/customer/CustomerHeader";
 
 function RestaurantMenuPage() {
   const navigate = useNavigate();
@@ -294,63 +295,88 @@ function RestaurantMenuPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">
-          Loading menu...
-        </p>
+      <div className="min-h-screen bg-slate-100">
+        <CustomerHeader />
+        <div className="flex h-96 items-center justify-center text-slate-500">
+          Loading restaurant menu...
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-slate-100">
+      <CustomerHeader />
 
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-950">
-              Restaurant Menu
-            </h1>
+      <main className="p-6 md:p-8">
+        <div className="mx-auto max-w-6xl">
+          {/* Restaurant Hero / Metadata Banner */}
+          {restaurant && (
+            <div className="mb-8 rounded-[28px] border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-950">
+                      {restaurant.name}
+                    </h1>
+                    <span
+                      className={`rounded-full px-3 py-0.5 text-xs font-bold ${
+                        restaurant.openNow
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-rose-100 text-rose-800"
+                      }`}
+                    >
+                      {restaurant.openNow ? "Open Now" : "Closed"}
+                    </span>
+                  </div>
 
-            <p className="mt-2 text-slate-500">
-              Browse available items and customize them for your taste.
-            </p>
+                  {restaurant.category && (
+                    <p className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-700">
+                      {restaurant.category}
+                    </p>
+                  )}
 
-            {restaurant && (
-              <p className="mt-2 text-sm font-medium text-slate-500">
-                {restaurant.openNow
-                  ? "Open for orders"
-                  : "Closed right now"}
-              </p>
-            )}
-          </div>
+                  <p className="mt-2 text-sm text-slate-600 max-w-2xl">
+                    {restaurant.description || "Freshly prepared meals delivered straight to your door."}
+                  </p>
+                </div>
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  "/customer/restaurants"
-                )
-              }
-              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-            >
-              ← Restaurants
-            </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/customer/restaurants")}
+                    className="rounded-3xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    ← All Restaurants
+                  </button>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  "/customer/cart"
-                )
-              }
-              className="rounded-3xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 transition"
-            >
-              View Cart
-            </button>
-          </div>
-        </div>
+              {/* Pre-order Details: Delivery time, Minimum order, Delivery Fee, Hours */}
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 rounded-2xl bg-slate-50 p-4 text-center border border-slate-100">
+                <div>
+                  <span className="block text-xs text-slate-400 font-medium">Estimated Delivery</span>
+                  <span className="text-sm font-bold text-slate-900">25 - 35 mins</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-slate-400 font-medium">Delivery Fee</span>
+                  <span className="text-sm font-bold text-slate-900">KES 150.00</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-slate-400 font-medium">Minimum Order</span>
+                  <span className="text-sm font-bold text-slate-900">KES 200.00</span>
+                </div>
+                <div>
+                  <span className="block text-xs text-slate-400 font-medium">Operating Hours</span>
+                  <span className="text-sm font-bold text-slate-900">
+                    {restaurant.openingTime && restaurant.closingTime
+                      ? `${restaurant.openingTime.slice(0, 5)} - ${restaurant.closingTime.slice(0, 5)}`
+                      : "08:00 - 22:00"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -604,6 +630,7 @@ function RestaurantMenuPage() {
         />
       </div>
     </main>
+  </div>
   );
 }
 

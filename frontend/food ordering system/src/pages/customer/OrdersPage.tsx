@@ -13,6 +13,7 @@ import {
   type Order,
   type OrderStatus,
 } from "../../services/OrderService";
+import CustomerHeader from "../../components/customer/CustomerHeader";
 
 function OrdersPage() {
   const navigate =
@@ -175,88 +176,32 @@ function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <p className="text-slate-500">
+      <div className="min-h-screen bg-slate-100">
+        <CustomerHeader />
+        <div className="flex h-96 items-center justify-center text-slate-500">
           Loading your orders...
-        </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
+    <div className="min-h-screen bg-slate-100">
+      <CustomerHeader />
 
-      <div className="mx-auto max-w-6xl">
+      <main className="p-6 md:p-8">
+        <div className="mx-auto max-w-6xl">
+          {/* PAGE HEADER */}
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-950">
+                My Orders
+              </h1>
 
-        {/* ============================= */}
-        {/* PAGE HEADER */}
-        {/* ============================= */}
-
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-
-          <div>
-
-            <h1 className="text-3xl font-bold text-slate-950">
-              My Orders
-            </h1>
-
-            <p className="mt-2 text-slate-500">
-              View your order history and track current orders.
-            </p>
-
-          </div>
-
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                "/customer/dashboard"
-              )
-            }
-            className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            ← Dashboard
-          </button>
-
-        </div>
-
-
-        {/* ============================= */}
-        {/* ERROR MESSAGE */}
-        {/* ============================= */}
-
-        {error && (
-
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-
-            {error}
-
-          </div>
-
-        )}
-
-
-        {/* ============================= */}
-        {/* EMPTY ORDER HISTORY */}
-        {/* ============================= */}
-
-        {orders.length === 0 ? (
-
-          <div className="rounded-[24px] border border-slate-200 bg-white p-10 text-center">
-
-            <div className="text-5xl">
-              📦
+              <p className="mt-2 text-slate-500">
+                View your order history and track current orders.
+              </p>
             </div>
-
-            <h2 className="mt-5 text-xl font-semibold text-slate-900">
-              No orders yet
-            </h2>
-
-            <p className="mt-2 text-slate-500">
-              Orders you place will appear here.
-            </p>
-
 
             <button
               type="button"
@@ -265,14 +210,50 @@ function OrdersPage() {
                   "/customer/restaurants"
                 )
               }
-              className="mt-6 rounded-3xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="rounded-3xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Browse Restaurants
             </button>
-
           </div>
 
-        ) : (
+          {/* ERROR MESSAGE */}
+          {error && (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={loadOrders}
+                className="font-bold underline text-red-800"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* EMPTY ORDER HISTORY */}
+          {orders.length === 0 ? (
+            <div className="rounded-[24px] border border-slate-200 bg-white p-12 text-center">
+              <h2 className="text-xl font-bold text-slate-900">
+                No orders yet
+              </h2>
+
+              <p className="mt-2 text-slate-500 text-sm">
+                Orders you place will appear here with live tracking.
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/customer/restaurants"
+                  )
+                }
+                className="mt-6 rounded-3xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition"
+              >
+                Explore Restaurants & Order Now
+              </button>
+            </div>
+          ) : (
 
           /* ============================= */
           /* ORDER HISTORY */
@@ -506,8 +487,8 @@ function OrdersPage() {
         )}
 
       </div>
-
     </main>
+  </div>
   );
 }
 

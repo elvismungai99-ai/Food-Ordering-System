@@ -588,6 +588,39 @@ public class RiderService {
     }
 
     @Transactional
+    public DeliveryRequestDto timeoutAndReassignRequest(
+            UUID requestId
+    ) {
+        DeliveryRequest request = deliveryRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Delivery request not found"));
+
+        if (request.getStatus() == DeliveryRequestStatus.REQUESTED) {
+            request.setStatus(DeliveryRequestStatus.REJECTED);
+            request.setRejectionReason("Timed out waiting for rider response");
+            request.setRespondedAt(LocalDateTime.now());
+            deliveryRequestRepository.save(request);
+
+            // Attempt automatic reassignment to next best available rider
+            Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId()).orElse(null);
+            Order order = orderRepository.findById(request.getOrderId()).orElse(null);
+            if (restaurant != null && order != null && request.getRestaurantLatitude() != null && request.getRestaurantLongitude() != null) {
+                try {
+                    AutoDeliveryRequest autoReq = new AutoDeliveryRequest();
+                    autoReq.setOrderId(order.getId());
+                    autoReq.setRestaurantLatitude(request.getRestaurantLatitude());
+                    autoReq.setRestaurantLongitude(request.getRestaurantLongitude());
+                    autoReq.setEstimatedPayout(request.getEstimatedPayout());
+                    return createAutomaticDeliveryRequest(restaurant.getOwnerId(), autoReq);
+                } catch (Exception ignored) {
+                    // In case no other rider is currently free
+                }
+            }
+        }
+
+        return new DeliveryRequestDto(request);
+    }
+
+    @Transactional
     public DeliveryRequestDto markArrivedAtRestaurant(
             UUID riderUserId,
             UUID requestId
