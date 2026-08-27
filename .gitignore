@@ -1,0 +1,42 @@
+# Root .gitignore for Food Ordering System
+
+# Environment & Local Secrets
+**/application-local.yml
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+!**/.env.production.example
+!**/application-local.example.yml
+
+# Logs
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/build/
+.cache/
+
+# Java / Maven
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+

@@ -2,6 +2,8 @@ package com.foodordering.security;
 
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,6 +26,9 @@ public class JwtAuthenticationFilter
         extends OncePerRequestFilter
         implements Ordered {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
@@ -31,11 +36,8 @@ public class JwtAuthenticationFilter
             JwtUtil jwtUtil,
             UserDetailsService userDetailsService
     ) {
-        this.jwtUtil =
-                jwtUtil;
-
-        this.userDetailsService =
-                userDetailsService;
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -50,128 +52,71 @@ public class JwtAuthenticationFilter
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String path =
-                request.getServletPath();
+        String path = request.getServletPath();
 
         // ---------------------------------------------
         // PUBLIC AUTH ENDPOINTS
         // ---------------------------------------------
-
         if (
                 path.equals("/api/auth/login")
                 || path.equals("/api/auth/register")
-                || "OPTIONS".equalsIgnoreCase(
-                        request.getMethod()
-                )
+                || "OPTIONS".equalsIgnoreCase(request.getMethod())
         ) {
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
+            filterChain.doFilter(request, response);
             return;
         }
 
         // ---------------------------------------------
         // GET AUTH HEADER
         // ---------------------------------------------
+        String authHeader = request.getHeader("Authorization");
 
-        String authHeader =
-                request.getHeader(
-                        "Authorization"
-                );
-
-        if (
-                authHeader == null
-                || !authHeader.startsWith(
-                        "Bearer "
-                )
-        ) {
-
-            filterChain.doFilter(
-                    request,
-                    response
-            );
-
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
             return;
         }
 
-        String token =
-                authHeader.substring(7);
+        String token = authHeader.substring(7);
 
         try {
-
-            String email =
-                    jwtUtil.extractEmail(
-                            token
-                    );
+            String email = jwtUtil.extractEmail(token);
 
             if (
                     email != null
-                    && SecurityContextHolder
-                            .getContext()
-                            .getAuthentication()
-                            == null
+                    && SecurityContextHolder.getContext().getAuthentication() == null
             ) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                UserDetails userDetails =
-                        userDetailsService
-                                .loadUserByUsername(
-                                        email
-                                );
+                // ENFORCE DISABLED-ACCOUNT CHECK: Immediate access revocation
+                if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                    log.warn("Access denied: Account for email {} is disabled.", email);
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"This account is currently disabled\"}");
+                    return;
+                }
 
-                if (
-                        jwtUtil.isTokenValid(
-                                token,
-                                userDetails
-                        )
-                ) {
-
+                if (jwtUtil.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
-
-                                    /*
-                                     * IMPORTANT.
-                                     *
-                                     * OWNER becomes ROLE_OWNER
-                                     * through UserDetailsService.
-                                     */
-                                    userDetails
-                                            .getAuthorities()
+                                    userDetails.getAuthorities()
                             );
 
                     authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(
-                                            request
-                                    )
+                            new WebAuthenticationDetailsSource().buildDetails(request)
                     );
 
-                    SecurityContextHolder
-                            .getContext()
-                            .setAuthentication(
-                                    authentication
-                            );
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
-
         } catch (Exception exception) {
-
-            System.err.println(
-                    "JWT AUTHENTICATION ERROR: "
-                    + exception.getMessage()
-            );
-
-            SecurityContextHolder
-                    .clearContext();
+            log.warn("JWT authentication rejected: {}", exception.getMessage());
+            SecurityContextHolder.clearContext();
         }
 
-        filterChain.doFilter(
-                request,
-                response
-        );
+        filterChain.doFilter(request, response);
     }
 }

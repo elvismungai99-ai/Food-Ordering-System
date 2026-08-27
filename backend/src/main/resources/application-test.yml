@@ -21,6 +21,8 @@ server:
 
 jwt:
   secret: test-food-ordering-system-secret-key-32chars-minimum
+  access-token-expiration-ms: 900000
+  refresh-token-expiration-ms: 604800000
 
 payments:
   mpesa:

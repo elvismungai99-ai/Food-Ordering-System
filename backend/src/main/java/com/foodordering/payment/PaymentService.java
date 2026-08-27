@@ -2,11 +2,18 @@ package com.foodordering.payment;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foodordering.User.entity.User;
+import com.foodordering.User.repository.UserRepository;
 import com.foodordering.common.exception.BusinessRuleException;
+import com.foodordering.common.exception.ForbiddenOperationException;
+import com.foodordering.common.exception.ResourceNotFoundException;
 import com.foodordering.order.Order;
 import com.foodordering.order.OrderRepository;
+import com.foodordering.order.OrderStatus;
 import com.foodordering.order.PaymentStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,8 +35,12 @@ import static java.util.Map.entry;
 @Service
 public class PaymentService {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(PaymentService.class);
+
     private final ObjectMapper objectMapper;
     private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
     private final HttpClient httpClient =
             HttpClient.newHttpClient();
 
@@ -40,10 +51,12 @@ public class PaymentService {
     private final String mpesaShortcode;
     private final String mpesaPasskey;
     private final String mpesaCallbackUrl;
+    private final String mpesaCallbackSecret;
 
     public PaymentService(
             ObjectMapper objectMapper,
             OrderRepository orderRepository,
+            UserRepository userRepository,
             @Value("${payments.mpesa.enabled:false}")
             boolean mpesaEnabled,
             @Value("${payments.mpesa.environment:sandbox}")
@@ -57,33 +70,27 @@ public class PaymentService {
             @Value("${payments.mpesa.passkey:}")
             String mpesaPasskey,
             @Value("${payments.mpesa.callback-url:}")
-            String mpesaCallbackUrl
+            String mpesaCallbackUrl,
+            @Value("${payments.mpesa.callback-secret:}")
+            String mpesaCallbackSecret
     ) {
-        this.objectMapper =
-                objectMapper;
-        this.orderRepository =
-                orderRepository;
-        this.mpesaEnabled =
-                mpesaEnabled;
-        this.mpesaEnvironment =
-                mpesaEnvironment;
-        this.mpesaConsumerKey =
-                mpesaConsumerKey;
-        this.mpesaConsumerSecret =
-                mpesaConsumerSecret;
-        this.mpesaShortcode =
-                mpesaShortcode;
-        this.mpesaPasskey =
-                mpesaPasskey;
-        this.mpesaCallbackUrl =
-                mpesaCallbackUrl;
+        this.objectMapper = objectMapper;
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+        this.mpesaEnabled = mpesaEnabled;
+        this.mpesaEnvironment = mpesaEnvironment;
+        this.mpesaConsumerKey = mpesaConsumerKey;
+        this.mpesaConsumerSecret = mpesaConsumerSecret;
+        this.mpesaShortcode = mpesaShortcode;
+        this.mpesaPasskey = mpesaPasskey;
+        this.mpesaCallbackUrl = mpesaCallbackUrl;
+        this.mpesaCallbackSecret = mpesaCallbackSecret;
     }
 
     public PaymentResult processPayment(
             UUID customerId,
             BigDecimal amount
     ) {
-
         return processPayment(
                 customerId,
                 amount,
@@ -98,13 +105,7 @@ public class PaymentService {
             PaymentMethod paymentMethod,
             String mpesaPhoneNumber
     ) {
-
-        if (
-                amount == null
-                || amount.compareTo(
-                        BigDecimal.ZERO
-                ) <= 0
-        ) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             return new PaymentResult(
                     false,
                     null,
@@ -112,88 +113,234 @@ public class PaymentService {
             );
         }
 
-        PaymentMethod safeMethod =
-                paymentMethod != null
-                        ? paymentMethod
-                        : PaymentMethod.CASH_ON_DELIVERY;
+        PaymentMethod safeMethod = paymentMethod != null
+                ? paymentMethod
+                : PaymentMethod.CASH_ON_DELIVERY;
 
         return switch (safeMethod) {
-            case MPESA ->
-                    initiateMpesaPayment(
-                            amount,
-                            mpesaPhoneNumber
-                    );
-            case CASH_ON_DELIVERY ->
-                    new PaymentResult(
-                            true,
-                            "COD-"
-                            + UUID.randomUUID()
-                                    .toString()
-                                    .toUpperCase(),
-                            "Cash on delivery order accepted",
-                            PaymentStatus.PENDING
-                    );
+            case MPESA -> initiateMpesaPayment(
+                    amount,
+                    mpesaPhoneNumber
+            );
+            case CASH_ON_DELIVERY -> new PaymentResult(
+                    true,
+                    "COD-" + UUID.randomUUID().toString().toUpperCase(),
+                    "Cash on delivery order accepted",
+                    PaymentStatus.PENDING
+            );
         };
     }
 
     @Transactional
-    public void handleMpesaCallback(
+    public PaymentCallbackResult handleMpesaCallback(
             MpesaCallbackRequest request
     ) {
+        return handleMpesaCallback(request, null);
+    }
 
-        MpesaCallbackRequest.StkCallback callback =
-                request != null
-                        ? request.getStkCallback()
-                        : null;
+    @Transactional
+    public PaymentCallbackResult handleMpesaCallback(
+            MpesaCallbackRequest request,
+            String providedSecret
+    ) {
+        // 1. Verify Callback Authenticity via Secret Token (if configured)
+        verifyCallbackSecret(providedSecret);
 
-        if (
-                callback == null
-                || callback.getCheckoutRequestId() == null
-                || callback
-                        .getCheckoutRequestId()
-                        .isBlank()
-        ) {
-            throw new BusinessRuleException(
-                    "Invalid M-Pesa callback payload"
-            );
+        // 2. Validate Payload Structure
+        MpesaCallbackRequest.StkCallback callback = request != null
+                ? request.getStkCallback()
+                : null;
+
+        if (callback == null || callback.getCheckoutRequestId() == null || callback.getCheckoutRequestId().isBlank()) {
+            log.error("Rejecting M-Pesa callback: Missing or empty CheckoutRequestID in payload.");
+            throw new BusinessRuleException("Invalid M-Pesa callback payload: Missing CheckoutRequestID");
         }
 
-        Order order =
-                orderRepository
-                        .findByPaymentReference(
-                                callback
-                                        .getCheckoutRequestId()
-                        )
-                        .orElseThrow(() ->
-                                new BusinessRuleException(
-                                        "Order not found for M-Pesa callback"
-                                )
-                        );
+        String checkoutRequestId = callback.getCheckoutRequestId().trim();
 
-        order.setPaymentStatus(
-                callback.isSuccessful()
-                        ? PaymentStatus.PAID
-                        : PaymentStatus.FAILED
-        );
+        // 3. Look Up Matching Order by Checkout ID / Payment Reference
+        Order order = orderRepository.findByPaymentReference(checkoutRequestId)
+                .or(() -> orderRepository.findFirstByPaymentReferenceStartingWith(checkoutRequestId))
+                .orElseThrow(() -> {
+                    log.error("Rejecting M-Pesa callback: No order found matching checkout ID {}", checkoutRequestId);
+                    return new ResourceNotFoundException("No order found matching checkout ID: " + checkoutRequestId);
+                });
 
-        orderRepository.save(
-                order
-        );
+        // 4. Idempotency Check: Don't re-process already completed payments
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            log.info("Idempotent M-Pesa callback: Order {} is already marked as PAID for checkout ID {}.",
+                    order.getId(), checkoutRequestId);
+            return new PaymentCallbackResult(true, "PAID", "Order is already marked as paid (idempotent)", true);
+        }
+
+        if (order.getPaymentStatus() == PaymentStatus.FAILED && !callback.isSuccessful()) {
+            log.info("Idempotent M-Pesa callback: Order {} is already marked as FAILED for checkout ID {}.",
+                    order.getId(), checkoutRequestId);
+            return new PaymentCallbackResult(false, "FAILED", "Order is already marked as failed (idempotent)", true);
+        }
+
+        // 5. Validate Transaction Status
+        if (!callback.isSuccessful()) {
+            String failureDescription = callback.getResultDescription() != null && !callback.getResultDescription().isBlank()
+                    ? callback.getResultDescription().trim()
+                    : "M-Pesa transaction rejected (ResultCode: " + callback.getResultCode() + ")";
+
+            order.setPaymentStatus(PaymentStatus.FAILED);
+            order.setCancellationReason("M-Pesa payment failed: " + failureDescription);
+            orderRepository.save(order);
+
+            log.warn("M-Pesa transaction failed for order {} (checkout ID: {}): {}",
+                    order.getId(), checkoutRequestId, failureDescription);
+            return new PaymentCallbackResult(false, "FAILED", failureDescription, false);
+        }
+
+        // 6. Validate Payment Amount
+        BigDecimal callbackAmount = callback.getAmount();
+        if (callbackAmount != null) {
+            BigDecimal expectedAmount = order.getTotalAmount();
+            if (expectedAmount != null && callbackAmount.compareTo(expectedAmount) < 0) {
+                log.error("SECURITY ALERT: Amount mismatch on order {}! Expected KES {}, but callback reported KES {}.",
+                        order.getId(), expectedAmount, callbackAmount);
+
+                order.setPaymentStatus(PaymentStatus.FAILED);
+                order.setCancellationReason("Security mismatch: Paid amount KES " + callbackAmount
+                        + " is less than order total KES " + expectedAmount);
+                orderRepository.save(order);
+
+                throw new BusinessRuleException("Payment amount mismatch: Expected KES " + expectedAmount
+                        + ", received KES " + callbackAmount);
+            }
+        }
+
+        // 7. Validate Customer Phone Number (if present in callback metadata and customer profile)
+        String callbackPhone = callback.getPhoneNumber();
+        if (callbackPhone != null && !callbackPhone.isBlank()) {
+            User customer = userRepository.findById(order.getCustomerId()).orElse(null);
+            if (customer != null && customer.getPhoneNumber() != null && !customer.getPhoneNumber().isBlank()) {
+                String normalizedCustomerPhone = normalizeKenyanPhone(customer.getPhoneNumber());
+                String normalizedCallbackPhone = normalizeKenyanPhone(callbackPhone);
+
+                if (!normalizedCustomerPhone.equals(normalizedCallbackPhone)) {
+                    log.error("SECURITY ALERT: Phone mismatch on order {}! Customer registered phone {} vs callback phone {}.",
+                            order.getId(), normalizedCustomerPhone, normalizedCallbackPhone);
+
+                    order.setPaymentStatus(PaymentStatus.FAILED);
+                    order.setCancellationReason("Security mismatch: Payment received from phone " + normalizedCallbackPhone
+                            + " which does not match customer phone " + normalizedCustomerPhone);
+                    orderRepository.save(order);
+
+                    throw new BusinessRuleException("Payment phone number mismatch");
+                }
+            }
+        }
+
+        // 8. Direct Daraja Query Validation (if active in production/sandbox)
+        if (mpesaEnabled && isDarajaConfigured()) {
+            verifyDirectlyWithDaraja(checkoutRequestId, order);
+        }
+
+        // 9. All Validations Passed -> Mark Order as PAID & CONFIRMED
+        order.setPaymentStatus(PaymentStatus.PAID);
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.CONFIRMED);
+        }
+
+        String receipt = callback.getMpesaReceiptNumber();
+        if (receipt != null && !receipt.isBlank()) {
+            order.setPaymentReference(checkoutRequestId + "|" + receipt);
+        }
+
+        orderRepository.save(order);
+        log.info("Order {} successfully verified and marked as PAID. M-Pesa Receipt: {}", order.getId(), receipt);
+
+        return new PaymentCallbackResult(true, "PAID", "Payment verified and order marked as paid", false);
+    }
+
+    private void verifyCallbackSecret(String providedSecret) {
+        if (mpesaCallbackSecret != null && !mpesaCallbackSecret.isBlank()) {
+            if (providedSecret == null || !mpesaCallbackSecret.trim().equals(providedSecret.trim())) {
+                log.warn("SECURITY ALERT: Unauthorized M-Pesa callback rejected. Invalid or missing secret token.");
+                throw new ForbiddenOperationException("Unauthorized M-Pesa callback: Invalid verification secret");
+            }
+        }
+    }
+
+    private boolean isDarajaConfigured() {
+        return mpesaConsumerKey != null && !mpesaConsumerKey.isBlank()
+                && mpesaConsumerSecret != null && !mpesaConsumerSecret.isBlank()
+                && mpesaShortcode != null && !mpesaShortcode.isBlank()
+                && mpesaPasskey != null && !mpesaPasskey.isBlank();
+    }
+
+    private void verifyDirectlyWithDaraja(String checkoutRequestId, Order order) {
+        try {
+            JsonNode statusResponse = queryMpesaTransactionStatus(checkoutRequestId);
+            if (statusResponse != null) {
+                int resultCode = statusResponse.path("ResultCode").asInt(-1);
+                if (resultCode != 0) {
+                    String resultDesc = statusResponse.path("ResultDesc").asText("Daraja status query reported failure");
+                    log.error("Daraja status query for checkout ID {} returned failure code {}: {}",
+                            checkoutRequestId, resultCode, resultDesc);
+
+                    order.setPaymentStatus(PaymentStatus.FAILED);
+                    order.setCancellationReason("Daraja direct verification failed: " + resultDesc);
+                    orderRepository.save(order);
+                    throw new BusinessRuleException("Daraja payment verification failed: " + resultDesc);
+                }
+            }
+        } catch (BusinessRuleException bre) {
+            throw bre;
+        } catch (Exception e) {
+            log.warn("Could not query Daraja directly for checkout ID {} (falling back to verified webhook): {}",
+                    checkoutRequestId, e.getMessage());
+        }
+    }
+
+    public JsonNode queryMpesaTransactionStatus(String checkoutRequestId) {
+        if (!mpesaEnabled || !isDarajaConfigured()) {
+            return null;
+        }
+
+        try {
+            String accessToken = getMpesaAccessToken();
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            String password = Base64.getEncoder().encodeToString(
+                    (mpesaShortcode + mpesaPasskey + timestamp).getBytes(StandardCharsets.UTF_8)
+            );
+
+            Map<String, Object> payload = Map.of(
+                    "BusinessShortCode", mpesaShortcode,
+                    "Password", password,
+                    "Timestamp", timestamp,
+                    "CheckoutRequestID", checkoutRequestId
+            );
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(mpesaBaseUrl() + "/mpesa/stkpushquery/v1/query"))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return objectMapper.readTree(response.body());
+            }
+        } catch (Exception e) {
+            log.warn("Direct Daraja STK status query failed for {}: {}", checkoutRequestId, e.getMessage());
+        }
+        return null;
     }
 
     private PaymentResult initiateMpesaPayment(
             BigDecimal amount,
             String phoneNumber
     ) {
-
         requireConfigured(
                 mpesaEnabled,
                 "M-Pesa is not enabled. Set MPESA_ENABLED=true after adding Daraja credentials."
         );
-        requireText(
-                phoneNumber,
-                "M-Pesa phone number is required"
-        );
+        requireText(phoneNumber, "M-Pesa phone number is required");
         requireText(mpesaConsumerKey, "MPESA_CONSUMER_KEY is required");
         requireText(mpesaConsumerSecret, "MPESA_CONSUMER_SECRET is required");
         requireText(mpesaShortcode, "MPESA_SHORTCODE is required");
@@ -201,105 +348,54 @@ public class PaymentService {
         requireText(mpesaCallbackUrl, "MPESA_CALLBACK_URL is required");
 
         try {
-            String accessToken =
-                    getMpesaAccessToken();
+            String accessToken = getMpesaAccessToken();
 
-            String timestamp =
-                    LocalDateTime.now()
-                            .format(
-                                    DateTimeFormatter.ofPattern(
-                                            "yyyyMMddHHmmss"
-                                    )
-                            );
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
-            String password =
-                    Base64.getEncoder()
-                            .encodeToString(
-                                    (
-                                            mpesaShortcode
-                                            + mpesaPasskey
-                                            + timestamp
-                                    ).getBytes(
-                                            StandardCharsets.UTF_8
-                                    )
-                            );
+            String password = Base64.getEncoder().encodeToString(
+                    (mpesaShortcode + mpesaPasskey + timestamp).getBytes(StandardCharsets.UTF_8)
+            );
 
-            Map<String, Object> payload =
-                    Map.ofEntries(
-                            entry("BusinessShortCode", mpesaShortcode),
-                            entry("Password", password),
-                            entry("Timestamp", timestamp),
-                            entry("TransactionType", "CustomerPayBillOnline"),
-                            entry("Amount", amount
-                                    .setScale(
-                                            0,
-                                            RoundingMode.HALF_UP
-                                    )
-                                    .intValue()),
-                            entry("PartyA", normalizeKenyanPhone(phoneNumber)),
-                            entry("PartyB", mpesaShortcode),
-                            entry("PhoneNumber", normalizeKenyanPhone(phoneNumber)),
-                            entry("CallBackURL", mpesaCallbackUrl),
-                            entry("AccountReference", "FOOD-ORDER"),
-                            entry("TransactionDesc", "Food order payment")
-                    );
+            String finalCallbackUrl = mpesaCallbackUrl;
+            if (mpesaCallbackSecret != null && !mpesaCallbackSecret.isBlank()) {
+                finalCallbackUrl += (mpesaCallbackUrl.contains("?") ? "&" : "?") + "secret=" + mpesaCallbackSecret.trim();
+            }
 
-            HttpRequest request =
-                    HttpRequest.newBuilder()
-                            .uri(
-                                    URI.create(
-                                            mpesaBaseUrl()
-                                            + "/mpesa/stkpush/v1/processrequest"
-                                    )
-                            )
-                            .header(
-                                    "Authorization",
-                                    "Bearer " + accessToken
-                            )
-                            .header(
-                                    "Content-Type",
-                                    "application/json"
-                            )
-                            .POST(
-                                    HttpRequest.BodyPublishers.ofString(
-                                            objectMapper.writeValueAsString(
-                                                    payload
-                                            )
-                                    )
-                            )
-                            .build();
+            Map<String, Object> payload = Map.ofEntries(
+                    entry("BusinessShortCode", mpesaShortcode),
+                    entry("Password", password),
+                    entry("Timestamp", timestamp),
+                    entry("TransactionType", "CustomerPayBillOnline"),
+                    entry("Amount", amount.setScale(0, RoundingMode.HALF_UP).intValue()),
+                    entry("PartyA", normalizeKenyanPhone(phoneNumber)),
+                    entry("PartyB", mpesaShortcode),
+                    entry("PhoneNumber", normalizeKenyanPhone(phoneNumber)),
+                    entry("CallBackURL", finalCallbackUrl),
+                    entry("AccountReference", "FOOD-ORDER"),
+                    entry("TransactionDesc", "Food order payment")
+            );
 
-            HttpResponse<String> response =
-                    httpClient.send(
-                            request,
-                            HttpResponse.BodyHandlers.ofString()
-                    );
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(mpesaBaseUrl() + "/mpesa/stkpush/v1/processrequest"))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
 
-            if (
-                    response.statusCode() < 200
-                    || response.statusCode() >= 300
-            ) {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 return new PaymentResult(
                         false,
                         null,
-                        "M-Pesa payment initiation failed: "
-                        + response.body()
+                        "M-Pesa payment initiation failed: " + response.body()
                 );
             }
 
-            JsonNode json =
-                    objectMapper.readTree(
-                            response.body()
-                    );
-
-            String reference =
-                    json.path("CheckoutRequestID")
-                            .asText(
-                                    "MPESA-"
-                                    + UUID.randomUUID()
-                                            .toString()
-                                            .toUpperCase()
-                            );
+            JsonNode json = objectMapper.readTree(response.body());
+            String reference = json.path("CheckoutRequestID").asText(
+                    "MPESA-" + UUID.randomUUID().toString().toUpperCase()
+            );
 
             return new PaymentResult(
                     true,
@@ -311,115 +407,61 @@ public class PaymentService {
             return new PaymentResult(
                     false,
                     null,
-                    "M-Pesa payment initiation failed: "
-                    + exception.getMessage()
+                    "M-Pesa payment initiation failed: " + exception.getMessage()
             );
         }
     }
 
-    private String getMpesaAccessToken()
-            throws Exception {
+    private String getMpesaAccessToken() throws Exception {
+        String credentials = Base64.getEncoder().encodeToString(
+                (mpesaConsumerKey + ":" + mpesaConsumerSecret).getBytes(StandardCharsets.UTF_8)
+        );
 
-        String credentials =
-                Base64.getEncoder()
-                        .encodeToString(
-                                (
-                                        mpesaConsumerKey
-                                        + ":"
-                                        + mpesaConsumerSecret
-                                ).getBytes(
-                                        StandardCharsets.UTF_8
-                                )
-                        );
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mpesaBaseUrl() + "/oauth/v1/generate?grant_type=client_credentials"))
+                .header("Authorization", "Basic " + credentials)
+                .GET()
+                .build();
 
-        HttpRequest request =
-                HttpRequest.newBuilder()
-                        .uri(
-                                URI.create(
-                                        mpesaBaseUrl()
-                                        + "/oauth/v1/generate?grant_type=client_credentials"
-                                )
-                        )
-                        .header(
-                                "Authorization",
-                                "Basic " + credentials
-                        )
-                        .GET()
-                        .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        HttpResponse<String> response =
-                httpClient.send(
-                        request,
-                        HttpResponse.BodyHandlers.ofString()
-                );
-
-        if (
-                response.statusCode() < 200
-                || response.statusCode() >= 300
-        ) {
-            throw new BusinessRuleException(
-                    "Unable to get M-Pesa access token"
-            );
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new BusinessRuleException("Unable to get M-Pesa access token");
         }
 
-        return objectMapper
-                .readTree(response.body())
-                .path("access_token")
-                .asText();
+        return objectMapper.readTree(response.body()).path("access_token").asText();
     }
 
     private String mpesaBaseUrl() {
-        return "production".equalsIgnoreCase(
-                mpesaEnvironment
-        )
+        return "production".equalsIgnoreCase(mpesaEnvironment)
                 ? "https://api.safaricom.co.ke"
                 : "https://sandbox.safaricom.co.ke";
     }
 
-    private String normalizeKenyanPhone(
-            String phoneNumber
-    ) {
-
-        String normalized =
-                phoneNumber
-                        .trim()
-                        .replaceAll("\\s+", "")
-                        .replace("-", "");
+    public String normalizeKenyanPhone(String phoneNumber) {
+        if (phoneNumber == null) return "";
+        String normalized = phoneNumber.trim().replaceAll("\\s+", "").replace("-", "");
 
         if (normalized.startsWith("+")) {
-            normalized =
-                    normalized.substring(1);
+            normalized = normalized.substring(1);
         }
 
         if (normalized.startsWith("0")) {
-            normalized =
-                    "254" + normalized.substring(1);
+            normalized = "254" + normalized.substring(1);
         }
 
         return normalized;
     }
 
-    private void requireConfigured(
-            boolean enabled,
-            String message
-    ) {
-
+    private void requireConfigured(boolean enabled, String message) {
         if (!enabled) {
-            throw new BusinessRuleException(
-                    message
-            );
+            throw new BusinessRuleException(message);
         }
     }
 
-    private void requireText(
-            String value,
-            String message
-    ) {
-
+    private void requireText(String value, String message) {
         if (value == null || value.isBlank()) {
-            throw new BusinessRuleException(
-                    message
-            );
+            throw new BusinessRuleException(message);
         }
     }
 }

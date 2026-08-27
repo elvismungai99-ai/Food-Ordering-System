@@ -26,12 +26,11 @@ public class UserService {
     public UserService(
             UserRepository userRepository,
             SavedAddressRepository savedAddressRepository,
-            PasswordEncoder passwordEncoder
-    ) {
+            PasswordEncoder passwordEncoder,
         this.userRepository = userRepository;
         this.savedAddressRepository = savedAddressRepository;
         this.passwordEncoder = passwordEncoder;
-    }
+        this.refreshTokenRepository = refreshTokenRepository;
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(UUID userId) {
@@ -71,7 +70,7 @@ public class UserService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-    }
+
 
     @Transactional(readOnly = true)
     public List<SavedAddressDto> getSavedAddresses(UUID userId) {

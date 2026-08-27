@@ -34,4 +34,8 @@ public interface OrderRepository
     Optional<Order> findByPaymentReference(
             String paymentReference
     );
+
+    Optional<Order> findFirstByPaymentReferenceStartingWith(
+            String prefix
+    );
 }

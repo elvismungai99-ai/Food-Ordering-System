@@ -21,82 +21,68 @@ public class JwtUtil {
     private final SecretKey secretKey;
 
     /*
-     * Token expires after 24 hours.
+     * Access token lifetime: 15 minutes (900,000 ms).
+     * Short-lived for enhanced security.
      */
-    private static final long EXPIRATION_TIME =
-            1000L * 60 * 60 * 24;
+    private final long accessTokenExpirationMs;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public JwtUtil(
             @Value("${jwt.secret}")
-            String secret
+            String secret,
+            @Value("${jwt.access-token-expiration-ms:900000}")
+            long accessTokenExpirationMs
     ) {
-
         this.secretKey =
                 Keys.hmacShaKeyFor(
                         secret.getBytes(
                                 StandardCharsets.UTF_8
                         )
                 );
+        this.accessTokenExpirationMs =
+                accessTokenExpirationMs;
+    }
+
+    public JwtUtil(String secret) {
+        this(secret, 900000L); // 15 minutes default for testing
+    }
+
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpirationMs / 1000L;
     }
 
     // =====================================================
-    // GENERATE TOKEN
+    // GENERATE ACCESS TOKEN
     // =====================================================
+
+    public String generateAccessToken(
+            UUID userId,
+            String email,
+            String role
+    ) {
+        String normalizedRole = normalizeRole(role);
+
+        return Jwts.builder()
+                .subject(userId.toString())
+                .claim("email", email)
+                .claim("role", normalizedRole)
+                .issuedAt(new Date())
+                .expiration(
+                        new Date(
+                                System.currentTimeMillis()
+                                        + accessTokenExpirationMs
+                        )
+                )
+                .signWith(secretKey)
+                .compact();
+    }
 
     public String generateToken(
             UUID userId,
             String email,
             String role
     ) {
-
-        String normalizedRole = normalizeRole(role);
-
-        return Jwts.builder()
-
-                /*
-                 * Store user ID as JWT subject.
-                 */
-                .subject(
-                        userId.toString()
-                )
-
-                /*
-                 * Store email in the token.
-                 */
-                .claim(
-                        "email",
-                        email
-                )
-
-                /*
-                 * Store application role.
-                 *
-                 * Examples:
-                 * CUSTOMER
-                 * OWNER
-                 * SUPER_ADMIN
-                 */
-                .claim(
-                        "role",
-                        normalizedRole
-                )
-
-                .issuedAt(
-                        new Date()
-                )
-
-                .expiration(
-                        new Date(
-                                System.currentTimeMillis()
-                                        + EXPIRATION_TIME
-                        )
-                )
-
-                .signWith(
-                        secretKey
-                )
-
-                .compact();
+        return generateAccessToken(userId, email, role);
     }
 
     // =====================================================
@@ -106,19 +92,10 @@ public class JwtUtil {
     private Claims extractAllClaims(
             String token
     ) {
-
         return Jwts.parser()
-
-                .verifyWith(
-                        secretKey
-                )
-
+                .verifyWith(secretKey)
                 .build()
-
-                .parseSignedClaims(
-                        token
-                )
-
+                .parseSignedClaims(token)
                 .getPayload();
     }
 
@@ -129,16 +106,10 @@ public class JwtUtil {
     public UUID extractUserId(
             String token
     ) {
-
         String subject =
-                extractAllClaims(
-                        token
-                )
-                        .getSubject();
+                extractAllClaims(token).getSubject();
 
-        return UUID.fromString(
-                subject
-        );
+        return UUID.fromString(subject);
     }
 
     // =====================================================
@@ -148,14 +119,8 @@ public class JwtUtil {
     public String extractEmail(
             String token
     ) {
-
-        return extractAllClaims(
-                token
-        )
-                .get(
-                        "email",
-                        String.class
-                );
+        return extractAllClaims(token)
+                .get("email", String.class);
     }
 
     // =====================================================
@@ -165,14 +130,8 @@ public class JwtUtil {
     public String extractRole(
             String token
     ) {
-
-        return extractAllClaims(
-                token
-        )
-                .get(
-                        "role",
-                        String.class
-                );
+        return extractAllClaims(token)
+                .get("role", String.class);
     }
 
     // =====================================================
@@ -182,16 +141,15 @@ public class JwtUtil {
     public Date extractExpiration(
             String token
     ) {
-
-        return extractAllClaims(
-                token
-        )
-                .getExpiration();
+        return extractAllClaims(token).getExpiration();
     }
 
-    // =====================================================
-    // CHECK TOKEN EXPIRATION
-    // =====================================================
+    public boolean isTokenExpired(
+            String token
+    ) {
+        return extractExpiration(token)
+                .before(new Date());
+    }
 
     private String normalizeRole(String role) {
         if (role == null || role.isBlank()) {
@@ -215,18 +173,6 @@ public class JwtUtil {
         return normalized;
     }
 
-    public boolean isTokenExpired(
-            String token
-    ) {
-
-        return extractExpiration(
-                token
-        )
-                .before(
-                        new Date()
-                );
-    }
-
     // =====================================================
     // VALIDATE TOKEN
     // =====================================================
@@ -235,20 +181,13 @@ public class JwtUtil {
             String token,
             UserDetails userDetails
     ) {
-
-        String email =
-                extractEmail(
-                        token
-                );
+        String email = extractEmail(token);
 
         return email != null
-
-                && email.equalsIgnoreCase(
-                        userDetails.getUsername()
-                )
-
-                && !isTokenExpired(
-                        token
-                );
+                && userDetails != null
+                && email.equalsIgnoreCase(userDetails.getUsername())
+                && !isTokenExpired(token)
+                && userDetails.isEnabled()
+                && userDetails.isAccountNonLocked();
     }
 }

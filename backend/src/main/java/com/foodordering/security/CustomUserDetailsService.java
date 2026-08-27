@@ -56,6 +56,9 @@ public class CustomUserDetailsService
                 .disabled(
                         !user.isActive()
                 )
+                .accountLocked(
+                        !user.isActive()
+                )
                 .build();
     }
 

@@ -12,6 +12,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class PasswordResetEmailService {
 
@@ -29,7 +31,6 @@ public class PasswordResetEmailService {
             @Value("${app.mail.from:no-reply@foodordering.local}")
             String fromAddress
     ) {
-
         this.mailSender =
                 mailSender.getIfAvailable();
 
@@ -41,12 +42,29 @@ public class PasswordResetEmailService {
             User user,
             String resetLink
     ) {
+        sendPasswordResetEmail(
+                user,
+                resetLink,
+                UUID.randomUUID()
+        );
+    }
+
+    public void sendPasswordResetEmail(
+            User user,
+            String resetLink,
+            UUID resetRequestId
+    ) {
+        UUID requestId = resetRequestId != null
+                ? resetRequestId
+                : UUID.randomUUID();
 
         if (mailSender == null) {
+            // SECURITY: Never log the raw token or full reset URL.
+            // Log only the sanitized reset request ID and user ID for auditing.
             log.warn(
-                    "No mail sender is configured. Password reset link for {}: {}",
-                    user.getEmail(),
-                    resetLink
+                    "No mail sender configured. Generated password reset request {} for user ID {}.",
+                    requestId,
+                    user != null ? user.getId() : "unknown"
             );
 
             return;
@@ -79,12 +97,18 @@ public class PasswordResetEmailService {
             mailSender.send(
                     message
             );
+            log.info(
+                    "Password reset email sent successfully for reset request {} (user ID {}).",
+                    requestId,
+                    user.getId()
+            );
         } catch (MailException exception) {
-            log.warn(
-                    "Could not send password reset email to {}. Development reset link: {}",
-                    user.getEmail(),
-                    resetLink,
-                    exception
+            // SECURITY: Never log reset link in error logs.
+            log.error(
+                    "Could not send password reset email for reset request {} (user ID {}): {}",
+                    requestId,
+                    user.getId(),
+                    exception.getMessage()
             );
         }
     }
