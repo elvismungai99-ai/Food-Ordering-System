@@ -203,6 +203,15 @@ function PaymentSimulationPage() {
     if (!activeOrder) return;
     try {
       await api.post(`/payments/simulate-callback/${activeOrder.id}?approve=${approve}`);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (approve) {
+        setFlowState("PAID_SUCCESS");
+        await refreshCart();
+      } else {
+        setFlowState("FAILED");
+        setError("M-Pesa transaction was cancelled or rejected (Simulated).");
+      }
     } catch (err) {
       console.warn("Simulation call error:", err);
     }

@@ -114,14 +114,14 @@ public class GoogleMapsLocationService {
                         return new ReverseGeocodeResponse(displayName.trim());
                     }
                 } else {
-                    LOGGER.warn(
-                            "Google Maps geocoding status '{}': {}",
+                    LOGGER.debug(
+                            "Google Maps geocoding status '{}': {}. Falling back to OpenStreetMap.",
                             status,
                             extractGoogleStatusMessage(response, status)
                     );
                 }
             } catch (Exception ex) {
-                LOGGER.warn("Google Maps reverse geocoding call failed: {}", ex.getMessage());
+                LOGGER.debug("Google Maps reverse geocoding call failed: {}. Falling back to OpenStreetMap.", ex.getMessage());
             }
         }
 
