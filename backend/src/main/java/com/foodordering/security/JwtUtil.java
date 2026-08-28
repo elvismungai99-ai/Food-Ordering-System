@@ -181,13 +181,17 @@ public class JwtUtil {
             String token,
             UserDetails userDetails
     ) {
-        String email = extractEmail(token);
+        try {
+            String email = extractEmail(token);
 
-        return email != null
-                && userDetails != null
-                && email.equalsIgnoreCase(userDetails.getUsername())
-                && !isTokenExpired(token)
-                && userDetails.isEnabled()
-                && userDetails.isAccountNonLocked();
+            return email != null
+                    && userDetails != null
+                    && email.equalsIgnoreCase(userDetails.getUsername())
+                    && !isTokenExpired(token)
+                    && userDetails.isEnabled()
+                    && userDetails.isAccountNonLocked();
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }

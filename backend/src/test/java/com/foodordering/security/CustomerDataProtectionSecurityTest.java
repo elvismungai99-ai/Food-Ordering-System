@@ -73,11 +73,15 @@ class CustomerDataProtectionSecurityTest {
     @Mock
     private com.foodordering.auth.RefreshTokenRepository refreshTokenRepository;
 
+    @Mock
+    private com.foodordering.payment.PaymentService paymentService;
+
     private SecurityUtils securityUtils;
     private CartService cartService;
     private UserService userService;
     private ReviewService reviewService;
     private MenuItemController menuItemController;
+    private com.foodordering.order.OrderService orderService;
 
     private User customerA;
     private User customerB;
@@ -98,6 +102,16 @@ class CustomerDataProtectionSecurityTest {
         userService = new UserService(userRepository, savedAddressRepository, passwordEncoder, refreshTokenRepository);
         reviewService = new ReviewService(reviewRepository, orderRepository);
         menuItemController = new MenuItemController(menuItemRepository, restaurantRepository, reviewRepository, securityUtils);
+        orderService = new com.foodordering.order.OrderService(
+                orderRepository,
+                cartRepository,
+                menuItemRepository,
+                restaurantRepository,
+                restaurantService,
+                paymentService,
+                pricingService,
+                new com.foodordering.order.OrderStateMachine()
+        );
 
         customerA = new User();
         customerA.setId(UUID.randomUUID());
@@ -265,5 +279,70 @@ class CustomerDataProtectionSecurityTest {
         // SecurityUtils fetches fresh role directly from database
         assertEquals("SUPER_ADMIN", securityUtils.getCurrentUserRole());
         assertTrue(securityUtils.isSuperAdmin());
+    }
+
+    @Test
+    void testCustomerCannotAccessAnotherCustomersOrder() {
+        UUID orderOfCustomerAId = UUID.randomUUID();
+        // Customer B tries to view Customer A's order
+        when(orderRepository.findByIdAndCustomerId(orderOfCustomerAId, customerB.getId()))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                orderService.getCustomerOrder(customerB.getId(), orderOfCustomerAId)
+        );
+    }
+
+    @Test
+    void testCustomerCannotCancelAnotherCustomersOrder() {
+        UUID orderOfCustomerAId = UUID.randomUUID();
+        // Customer B tries to cancel Customer A's order
+        when(orderRepository.findByIdAndCustomerId(orderOfCustomerAId, customerB.getId()))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                orderService.cancelCustomerOrder(customerB.getId(), orderOfCustomerAId, "Fraudulent cancel attempt")
+        );
+    }
+
+    @Test
+    void testRestaurantOwnerCannotViewAnotherRestaurantsOrders() {
+        Restaurant restaurantA = new Restaurant();
+        restaurantA.setId(UUID.randomUUID());
+        restaurantA.setOwnerId(ownerA.getId()); // Owned by Owner A
+
+        when(restaurantRepository.existsById(restaurantA.getId())).thenReturn(true);
+        when(restaurantRepository.findById(restaurantA.getId())).thenReturn(Optional.of(restaurantA));
+
+        // Owner B attempts to view orders for Restaurant A without superadmin privileges
+        com.foodordering.common.exception.BusinessRuleException exception = assertThrows(
+                com.foodordering.common.exception.BusinessRuleException.class,
+                () -> orderService.getRestaurantOrders(ownerB.getId(), restaurantA.getId(), false)
+        );
+
+        assertTrue(exception.getMessage().contains("You can access only orders for your own restaurant"));
+    }
+
+    @Test
+    void testRestaurantOwnerCannotUpdateStatusOfAnotherRestaurantsOrder() {
+        Restaurant restaurantA = new Restaurant();
+        restaurantA.setId(UUID.randomUUID());
+        restaurantA.setOwnerId(ownerA.getId()); // Owned by Owner A
+
+        com.foodordering.order.Order orderA = new com.foodordering.order.Order();
+        orderA.setId(UUID.randomUUID());
+        orderA.setRestaurantId(restaurantA.getId());
+        orderA.setStatus(com.foodordering.order.OrderStatus.PENDING);
+
+        when(orderRepository.findById(orderA.getId())).thenReturn(Optional.of(orderA));
+        when(restaurantRepository.findById(restaurantA.getId())).thenReturn(Optional.of(restaurantA));
+
+        // Owner B attempts to confirm or progress an order belonging to Restaurant A
+        com.foodordering.common.exception.BusinessRuleException exception = assertThrows(
+                com.foodordering.common.exception.BusinessRuleException.class,
+                () -> orderService.updateOrderStatus(ownerB.getId(), orderA.getId(), com.foodordering.order.OrderStatus.CONFIRMED, false)
+        );
+
+        assertTrue(exception.getMessage().contains("You can access only orders for your own restaurant"));
     }
 }

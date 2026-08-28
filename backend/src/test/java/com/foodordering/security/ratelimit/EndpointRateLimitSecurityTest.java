@@ -108,5 +108,33 @@ class EndpointRateLimitSecurityTest {
         filter.doFilter(blockedReq, blockedRes, chain);
         assertEquals(429, blockedRes.getStatus());
     }
+
+    @Test
+    void testRateLimitBypassAttemptWithSpoofedIpHeaders_IsBlocked() throws Exception {
+        String realClientIp = "197.232.88.4";
+
+        // Attacker sends 5 login attempts and tries to bypass rate limiting by rotating fake headers
+        for (int i = 0; i < 5; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/login");
+            req.setRemoteAddr(realClientIp);
+            req.addHeader("X-Forwarded-For", "malicious-injection-string-" + i);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            MockFilterChain chain = new MockFilterChain();
+
+            filter.doFilter(req, res, chain);
+            // ClientIpResolver detects invalid IP in header and falls back to remoteAddr
+            assertEquals(200, res.getStatus());
+        }
+
+        // 6th attempt from the same client IP is blocked, regardless of header spoofing
+        MockHttpServletRequest blockedReq = new MockHttpServletRequest("POST", "/api/auth/login");
+        blockedReq.setRemoteAddr(realClientIp);
+        blockedReq.addHeader("X-Forwarded-For", "another-fake-ip-bypass-attempt");
+        MockHttpServletResponse blockedRes = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(blockedReq, blockedRes, chain);
+        assertEquals(429, blockedRes.getStatus());
+    }
 }
 

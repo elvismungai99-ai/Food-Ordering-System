@@ -269,5 +269,29 @@ class PaymentCallbackSecurityTest {
                 paymentService.handleMpesaCallback(callbackRequest, testSecret)
         );
     }
+
+    @Test
+    void testDuplicateMpesaReceiptClaimedByAnotherOrder_IsRejected() {
+        UUID orderIdA = UUID.randomUUID();
+        UUID orderIdB = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
+        String checkoutIdB = "ws_CO_006";
+        String stolenReceipt = "NLJ7RT61SV";
+        BigDecimal amount = new BigDecimal("500.00");
+
+        Order orderA = createTestOrder(orderIdA, customerId, "ws_CO_PREV", amount);
+        orderA.setProviderTransactionId(stolenReceipt);
+
+        Order orderB = createTestOrder(orderIdB, customerId, checkoutIdB, amount);
+
+        when(orderRepository.findByPaymentReference(checkoutIdB)).thenReturn(Optional.of(orderB));
+        when(orderRepository.findByProviderTransactionId(stolenReceipt)).thenReturn(Optional.of(orderA));
+
+        MpesaCallbackRequest callbackRequest = createSuccessCallback(checkoutIdB, amount, "254712345678", stolenReceipt);
+
+        assertThrows(BusinessRuleException.class, () ->
+                paymentService.handleMpesaCallback(callbackRequest, testSecret)
+        );
+    }
 }
 
