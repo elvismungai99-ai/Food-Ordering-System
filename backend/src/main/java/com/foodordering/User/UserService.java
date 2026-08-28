@@ -5,6 +5,7 @@ import com.foodordering.User.entity.SavedAddress;
 import com.foodordering.User.entity.User;
 import com.foodordering.User.repository.SavedAddressRepository;
 import com.foodordering.User.repository.UserRepository;
+import com.foodordering.auth.RefreshTokenRepository;
 import com.foodordering.common.exception.BusinessRuleException;
 import com.foodordering.common.exception.ConflictException;
 import com.foodordering.common.exception.ResourceNotFoundException;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,15 +24,19 @@ public class UserService {
     private final UserRepository userRepository;
     private final SavedAddressRepository savedAddressRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public UserService(
             UserRepository userRepository,
             SavedAddressRepository savedAddressRepository,
             PasswordEncoder passwordEncoder,
+            RefreshTokenRepository refreshTokenRepository
+    ) {
         this.userRepository = userRepository;
         this.savedAddressRepository = savedAddressRepository;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepository = refreshTokenRepository;
+    }
 
     @Transactional(readOnly = true)
     public UserProfileResponse getProfile(UUID userId) {
@@ -71,6 +77,9 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
+        // Security: Revoke all active refresh tokens on password change
+        refreshTokenRepository.revokeAllActiveTokensForUser(user, LocalDateTime.now());
+    }
 
     @Transactional(readOnly = true)
     public List<SavedAddressDto> getSavedAddresses(UUID userId) {
@@ -167,4 +176,3 @@ public class UserService {
         );
     }
 }
-

@@ -1,19 +1,20 @@
 package com.foodordering.admin;
 
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.foodordering.User.entity.User;
+import com.foodordering.audit.AuditLog;
+import com.foodordering.audit.AuditLogService;
+import com.foodordering.order.OrderService;
+import com.foodordering.payment.PaymentResult;
+import com.foodordering.payment.PaymentService;
+import com.foodordering.security.SecurityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.foodordering.User.dto.UserDto;
 import com.foodordering.User.entity.Role;
@@ -32,7 +33,6 @@ import com.foodordering.rider.RiderRepository;
 import com.foodordering.rider.RiderStatus;
 import com.foodordering.rider.dto.DeliveryRequestDto;
 import com.foodordering.rider.dto.RiderDto;
-import com.foodordering.security.JwtUtil;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -44,7 +44,35 @@ public class AdminController {
     private final RiderRepository riderRepository;
     private final DeliveryRequestRepository deliveryRequestRepository;
     private final OrderRepository orderRepository;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtils securityUtils;
+    private final AuditLogService auditLogService;
+    private final OrderService orderService;
+    private final PaymentService paymentService;
+
+    @Autowired
+    public AdminController(
+            UserRepository userRepository,
+            RestaurantRepository restaurantRepository,
+            RestaurantService restaurantService,
+            RiderRepository riderRepository,
+            DeliveryRequestRepository deliveryRequestRepository,
+            OrderRepository orderRepository,
+            SecurityUtils securityUtils,
+            AuditLogService auditLogService,
+            @Autowired(required = false) OrderService orderService,
+            @Autowired(required = false) PaymentService paymentService
+    ) {
+        this.userRepository = userRepository;
+        this.restaurantRepository = restaurantRepository;
+        this.restaurantService = restaurantService;
+        this.riderRepository = riderRepository;
+        this.deliveryRequestRepository = deliveryRequestRepository;
+        this.orderRepository = orderRepository;
+        this.securityUtils = securityUtils;
+        this.auditLogService = auditLogService;
+        this.orderService = orderService;
+        this.paymentService = paymentService;
+    }
 
     public AdminController(
             UserRepository userRepository,
@@ -53,346 +81,202 @@ public class AdminController {
             RiderRepository riderRepository,
             DeliveryRequestRepository deliveryRequestRepository,
             OrderRepository orderRepository,
-            JwtUtil jwtUtil
+            SecurityUtils securityUtils,
+            AuditLogService auditLogService
     ) {
-        this.userRepository = userRepository;
-        this.restaurantRepository = restaurantRepository;
-        this.restaurantService = restaurantService;
-        this.riderRepository = riderRepository;
-        this.deliveryRequestRepository = deliveryRequestRepository;
-        this.orderRepository = orderRepository;
-        this.jwtUtil = jwtUtil;
+        this(userRepository, restaurantRepository, restaurantService, riderRepository, deliveryRequestRepository, orderRepository, securityUtils, auditLogService, null, null);
     }
 
     @GetMapping("/customers")
-    public ResponseEntity<?> getAllCustomers(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            List<UserDto> customers = userRepository
-                    .findByRole(Role.CUSTOMER)
-                    .stream()
-                    .map(UserDto::new)
-                    .collect(Collectors.toList());
+    public ResponseEntity<List<UserDto>> getAllCustomers() {
+        securityUtils.requireSuperAdmin();
+        List<UserDto> customers = userRepository
+                .findByRole(Role.CUSTOMER)
+                .stream()
+                .map(UserDto::new)
+                .collect(Collectors.toList());
 
-            return ResponseEntity.ok(customers);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        return ResponseEntity.ok(customers);
     }
 
     @DeleteMapping("/customers/{id}")
-    public ResponseEntity<?> deleteCustomer(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
-            @PathVariable UUID id
-    ) {
-        try {
-            requireAdmin(authHeader);
-            userRepository.deleteById(id);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<Void> deleteCustomer(@PathVariable UUID id) {
+        securityUtils.requireSuperAdmin();
+        userRepository.deleteById(id);
+        auditLogService.logAction("CUSTOMER_DELETED", id.toString(), "USER", "Super admin deleted customer account");
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/customers/{id}/activities")
-    public ResponseEntity<?> getCustomerActivities(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
-            @PathVariable UUID id
-    ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    orderRepository
-                            .findByCustomerIdOrderByCreatedAtDesc(id)
-                            .stream()
-                            .map(OrderDto::new)
-                            .toList()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<List<OrderDto>> getCustomerActivities(@PathVariable UUID id) {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(
+                orderRepository
+                        .findByCustomerIdOrderByCreatedAtDesc(id)
+                        .stream()
+                        .map(OrderDto::new)
+                        .toList()
+        );
     }
 
     @GetMapping("/owners")
-    public ResponseEntity<?> getAllOwners(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            List<UserDto> owners = userRepository
-                    .findByRole(Role.OWNER)
-                    .stream()
-                    .map(UserDto::new)
-                    .collect(Collectors.toList());
+    public ResponseEntity<List<UserDto>> getAllOwners() {
+        securityUtils.requireSuperAdmin();
+        List<UserDto> owners = userRepository
+                .findByRole(Role.OWNER)
+                .stream()
+                .map(UserDto::new)
+                .collect(Collectors.toList());
 
-            return ResponseEntity.ok(owners);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        return ResponseEntity.ok(owners);
     }
 
     @GetMapping("/owners/{id}/activities")
-    public ResponseEntity<?> getOwnerActivities(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
-            @PathVariable UUID id
-    ) {
-        try {
-            requireAdmin(authHeader);
+    public ResponseEntity<List<OrderDto>> getOwnerActivities(@PathVariable UUID id) {
+        securityUtils.requireSuperAdmin();
 
-            Restaurant restaurant = restaurantRepository
-                    .findByOwnerId(id)
-                    .orElseThrow(() ->
-                            new RuntimeException("Restaurant not found for this owner")
-                    );
+        Restaurant restaurant = restaurantRepository
+                .findByOwnerId(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Restaurant not found for this owner")
+                );
 
-            return ResponseEntity.ok(
-                    orderRepository
-                            .findByRestaurantIdOrderByCreatedAtDesc(
-                                    restaurant.getId()
-                            )
-                            .stream()
-                            .map(OrderDto::new)
-                            .toList()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        return ResponseEntity.ok(
+                orderRepository
+                        .findByRestaurantIdOrderByCreatedAtDesc(
+                                restaurant.getId()
+                        )
+                        .stream()
+                        .map(OrderDto::new)
+                        .toList()
+        );
     }
 
     @GetMapping("/restaurants")
-    public ResponseEntity<?> getAllRestaurants(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            List<RestaurantDto> restaurants = restaurantRepository
-                    .findAll()
-                    .stream()
-                    .map(RestaurantDto::new)
-                    .toList();
+    public ResponseEntity<List<RestaurantDto>> getAllRestaurants() {
+        securityUtils.requireSuperAdmin();
+        List<RestaurantDto> restaurants = restaurantRepository
+                .findAll()
+                .stream()
+                .map(RestaurantDto::new)
+                .toList();
 
-            return ResponseEntity.ok(restaurants);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        return ResponseEntity.ok(restaurants);
     }
 
     @GetMapping("/restaurants/pending")
-    public ResponseEntity<?> getPendingRestaurants(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    restaurantService.getRestaurantsByStatus(
-                            RestaurantStatus.PENDING_APPROVAL
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<?> getPendingRestaurants() {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(
+                restaurantService.getRestaurantsByStatus(
+                        RestaurantStatus.PENDING_APPROVAL
+                )
+        );
     }
 
     @PatchMapping("/restaurants/{id}/status")
     public ResponseEntity<?> updateRestaurantStatus(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
             @PathVariable UUID id,
             @RequestParam RestaurantStatus status
     ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    restaurantService.updateApprovalStatus(
-                            id,
-                            status
-                    )
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        securityUtils.requireSuperAdmin();
+        Object updated = restaurantService.updateApprovalStatus(id, status);
+        auditLogService.logAction("RESTAURANT_STATUS_CHANGED", id.toString(), "RESTAURANT", "Status updated to " + status);
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/restaurants/{id}")
-    public ResponseEntity<?> deleteRestaurant(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
-            @PathVariable UUID id
-    ) {
-        try {
-            requireAdmin(authHeader);
-            restaurantRepository.deleteById(id);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<Void> deleteRestaurant(@PathVariable UUID id) {
+        securityUtils.requireSuperAdmin();
+        restaurantRepository.deleteById(id);
+        auditLogService.logAction("RESTAURANT_DELETED", id.toString(), "RESTAURANT", "Super admin deleted restaurant");
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/riders")
-    public ResponseEntity<?> getAllRiders(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    riderRepository
-                            .findAll()
-                            .stream()
-                            .map(RiderDto::new)
-                            .toList()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<List<RiderDto>> getAllRiders() {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(
+                riderRepository
+                        .findAll()
+                        .stream()
+                        .map(RiderDto::new)
+                        .toList()
+        );
     }
 
     @PatchMapping("/riders/{id}/status")
-    public ResponseEntity<?> updateRiderStatus(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
+    public ResponseEntity<RiderDto> updateRiderStatus(
             @PathVariable UUID id,
             @RequestParam RiderStatus status
     ) {
-        try {
-            requireAdmin(authHeader);
+        securityUtils.requireSuperAdmin();
 
-            Rider rider = riderRepository
-                    .findById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException("Rider not found")
-                    );
-
-            rider.setStatus(status);
-
-            if (status != RiderStatus.APPROVED) {
-                rider.setOnline(false);
-                rider.setOperationalStatus(
-                        RiderOperationalStatus.CLOSED
+        Rider rider = riderRepository
+                .findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Rider not found")
                 );
-            }
 
-            return ResponseEntity.ok(
-                    new RiderDto(
-                            riderRepository.save(rider)
-                    )
+        rider.setStatus(status);
+
+        if (status != RiderStatus.APPROVED) {
+            rider.setOnline(false);
+            rider.setOperationalStatus(
+                    RiderOperationalStatus.CLOSED
             );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
         }
+
+        Rider saved = riderRepository.save(rider);
+        auditLogService.logAction("RIDER_STATUS_CHANGED", id.toString(), "RIDER", "Status updated to " + status);
+        return ResponseEntity.ok(new RiderDto(saved));
     }
 
     @GetMapping("/riders/activities")
-    public ResponseEntity<?> getRiderActivities(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader
-    ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    deliveryRequestRepository
-                            .findAllByOrderByRequestedAtDesc()
-                            .stream()
-                            .map(DeliveryRequestDto::new)
-                            .toList()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+    public ResponseEntity<List<DeliveryRequestDto>> getAllRiderActivities() {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(
+                deliveryRequestRepository
+                        .findAllByOrderByRequestedAtDesc()
+                        .stream()
+                        .map(DeliveryRequestDto::new)
+                        .toList()
+        );
     }
 
     @GetMapping("/riders/{id}/activities")
-    public ResponseEntity<?> getRiderActivities(
-            @RequestHeader(
-                    value = "Authorization",
-                    required = false
-            )
-            String authHeader,
+    public ResponseEntity<List<DeliveryRequestDto>> getRiderActivities(@PathVariable UUID id) {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(
+                deliveryRequestRepository
+                        .findByRiderIdOrderByRequestedAtDesc(id)
+                        .stream()
+                        .map(DeliveryRequestDto::new)
+                        .toList()
+        );
+    }
+
+    @PostMapping("/orders/{id}/refund")
+    public ResponseEntity<OrderDto> refundOrder(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        User admin = securityUtils.requireSuperAdmin();
+        String reason = body != null ? body.get("reason") : "Admin refund";
+        return ResponseEntity.ok(orderService.refundOrder(id, reason, admin.getId()));
+    }
+
+    @PostMapping("/orders/{id}/reconcile-payment")
+    public ResponseEntity<PaymentResult> reconcileOrderPayment(
             @PathVariable UUID id
     ) {
-        try {
-            requireAdmin(authHeader);
-            return ResponseEntity.ok(
-                    deliveryRequestRepository
-                            .findByRiderIdOrderByRequestedAtDesc(id)
-                            .stream()
-                            .map(DeliveryRequestDto::new)
-                            .toList()
-            );
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(403).body(e.getMessage());
-        }
+        User admin = securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(paymentService.reconcilePayment(id, admin.getId()));
     }
 
-    private void requireAdmin(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Authorization token is missing or invalid");
-        }
-
-        String token = authHeader.substring(7);
-        String role = normalizeRole(jwtUtil.extractRole(token));
-
-        if (!Role.SUPER_ADMIN.equals(role)) {
-            throw new RuntimeException("Access denied: admin privileges required");
-        }
-    }
-
-    private String normalizeRole(String role) {
-        if (role == null || role.isBlank()) {
-            return "";
-        }
-
-        String normalized = role.trim().toUpperCase(Locale.ROOT);
-
-        if (normalized.startsWith("ROLE_")) {
-            normalized = normalized.substring(5);
-        }
-
-        return normalized;
+    @GetMapping("/audit-logs")
+    public ResponseEntity<List<AuditLog>> getAuditLogs() {
+        securityUtils.requireSuperAdmin();
+        return ResponseEntity.ok(auditLogService.getRecentLogs());
     }
 }

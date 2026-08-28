@@ -48,6 +48,20 @@ public class PlaceOrderRequest {
     )
     private String mpesaPhoneNumber;
 
+    @Size(
+            max = 128,
+            message = "Idempotency key must not exceed 128 characters"
+    )
+    private String idempotencyKey;
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
     public String getDeliveryAddress() {
         return deliveryAddress;
     }

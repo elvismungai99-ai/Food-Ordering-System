@@ -54,12 +54,12 @@ public class MenuItemDto {
     private boolean available;
 
     @Size(
-            max = 1000000,
-            message = "Uploaded image is too large"
+            max = 5000000,
+            message = "Uploaded image is too large (max 5MB)"
     )
     @Pattern(
-            regexp = "^$|^https?://.+|^data:image/(jpeg|png|webp);base64,.+",
-            message = "Image must be a URL or uploaded JPEG, PNG or WebP image"
+            regexp = "^$|^https?://.+|^data:image/(jpeg|png|webp|gif);base64,.+",
+            message = "Image must be a URL or uploaded JPEG, PNG, WebP, or GIF image"
     )
     private String imageUrl;
     private Double averageRating;

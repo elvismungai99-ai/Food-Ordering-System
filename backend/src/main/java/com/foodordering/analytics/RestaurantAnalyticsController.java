@@ -1,109 +1,34 @@
 package com.foodordering.analytics;
 
+import com.foodordering.User.entity.User;
 import com.foodordering.analytics.dto.RestaurantAnalyticsDto;
-import com.foodordering.common.exception.ForbiddenOperationException;
-import com.foodordering.security.JwtUtil;
+import com.foodordering.security.SecurityUtils;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Locale;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/analytics")
 public class RestaurantAnalyticsController {
 
     private final RestaurantAnalyticsService analyticsService;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtils securityUtils;
 
     public RestaurantAnalyticsController(
             RestaurantAnalyticsService analyticsService,
-            JwtUtil jwtUtil
+            SecurityUtils securityUtils
     ) {
-        this.analyticsService =
-                analyticsService;
-        this.jwtUtil =
-                jwtUtil;
+        this.analyticsService = analyticsService;
+        this.securityUtils = securityUtils;
     }
 
     @GetMapping("/restaurant")
-    public ResponseEntity<RestaurantAnalyticsDto>
-    getRestaurantAnalytics(
-            @RequestHeader("Authorization")
-            String authHeader
-    ) {
-
-        requireRestaurantOwner(authHeader);
-
+    public ResponseEntity<RestaurantAnalyticsDto> getRestaurantAnalytics() {
+        User owner = securityUtils.requireOwner();
         return ResponseEntity.ok(
-                analyticsService
-                        .getMyRestaurantAnalytics(
-                                extractUserId(authHeader)
-                        )
+                analyticsService.getMyRestaurantAnalytics(owner.getId())
         );
-    }
-
-    private UUID extractUserId(
-            String authHeader
-    ) {
-
-        return jwtUtil.extractUserId(
-                authHeader.substring(7)
-        );
-    }
-
-    private void requireRestaurantOwner(
-            String authHeader
-    ) {
-
-        if (
-                authHeader == null
-                || !authHeader.startsWith("Bearer ")
-        ) {
-            throw new ForbiddenOperationException(
-                    "Authorization token is missing or invalid"
-            );
-        }
-
-        String role =
-                normalizeRole(
-                        jwtUtil.extractRole(
-                                authHeader.substring(7)
-                        )
-                );
-
-        if (
-                !"OWNER".equals(role)
-                && !"RESTAURANT_ADMIN".equals(role)
-                && !"RESTAURANT_OWNER".equals(role)
-                && !"SUPER_ADMIN".equals(role)
-        ) {
-            throw new ForbiddenOperationException(
-                    "Only restaurant owners can view restaurant analytics"
-            );
-        }
-    }
-
-    private String normalizeRole(
-            String role
-    ) {
-
-        if (role == null || role.isBlank()) {
-            return "";
-        }
-
-        String normalized =
-                role.trim().toUpperCase(Locale.ROOT);
-
-        if (normalized.startsWith("ROLE_")) {
-            normalized =
-                    normalized.substring(5);
-        }
-
-        return normalized;
     }
 }

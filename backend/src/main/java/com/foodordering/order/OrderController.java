@@ -1,19 +1,17 @@
 package com.foodordering.order;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
+import com.foodordering.User.entity.User;
+import com.foodordering.security.SecurityUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,8 +20,6 @@ import com.foodordering.order.dto.CancelOrderRequest;
 import com.foodordering.order.dto.OrderTrackingDto;
 import com.foodordering.order.dto.PlaceOrderRequest;
 import com.foodordering.order.dto.UpdateOrderStatusRequest;
-import com.foodordering.common.exception.ForbiddenOperationException;
-import com.foodordering.security.JwtUtil;
 
 import jakarta.validation.Valid;
 
@@ -31,415 +27,150 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-        private final OrderService orderService;
+    private final OrderService orderService;
     private final OrderTrackingService orderTrackingService;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtils securityUtils;
 
     public OrderController(
             OrderService orderService,
             OrderTrackingService orderTrackingService,
-            JwtUtil jwtUtil
+            SecurityUtils securityUtils
     ) {
-        this.orderService =
-                orderService;
-
-        this.orderTrackingService =
-                orderTrackingService;
-
-        this.jwtUtil =
-                jwtUtil;
+        this.orderService = orderService;
+        this.orderTrackingService = orderTrackingService;
+        this.securityUtils = securityUtils;
     }
 
     @PostMapping
-    public ResponseEntity<OrderDto>
-    placeOrder(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @Valid
-            @RequestBody
-            PlaceOrderRequest request
+    public ResponseEntity<OrderDto> placeOrder(
+            @Valid @RequestBody PlaceOrderRequest request
     ) {
+        User customer = securityUtils.requireCustomer();
 
-        UUID customerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireCustomer(
-                authHeader
+        OrderDto order = orderService.placeOrder(
+                customer.getId(),
+                request
         );
 
-        OrderDto order =
-                orderService
-                        .placeOrder(
-                                customerId,
-                                request
-                        );
-
         return ResponseEntity
-                .status(
-                        HttpStatus.CREATED
-                )
+                .status(HttpStatus.CREATED)
                 .body(order);
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderDto>>
-    getCustomerOrders(
-
-            @RequestHeader("Authorization")
-            String authHeader
-    ) {
-
-        UUID customerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireCustomer(
-                authHeader
-        );
+    public ResponseEntity<List<OrderDto>> getCustomerOrders() {
+        User customer = securityUtils.requireCustomer();
 
         return ResponseEntity.ok(
-                orderService
-                        .getCustomerOrders(
-                                customerId
-                        )
+                orderService.getCustomerOrders(customer.getId())
         );
     }
 
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderDto>
-    getCustomerOrder(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID orderId
+    public ResponseEntity<OrderDto> getCustomerOrder(
+            @PathVariable UUID orderId
     ) {
-
-        UUID customerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireCustomer(
-                authHeader
-        );
+        User customer = securityUtils.requireCustomer();
 
         return ResponseEntity.ok(
-                orderService
-                        .getCustomerOrder(
-                                customerId,
-                                orderId
-                        )
+                orderService.getCustomerOrder(
+                        customer.getId(),
+                        orderId
+                )
         );
     }
 
-        @GetMapping("/{orderId}/tracking")
-    public ResponseEntity<OrderTrackingDto>
-    getOrderTracking(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID orderId
+    @GetMapping("/{orderId}/tracking")
+    public ResponseEntity<OrderTrackingDto> getOrderTracking(
+            @PathVariable UUID orderId
     ) {
-
-        UUID customerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireCustomer(
-                authHeader
-        );
+        User customer = securityUtils.requireCustomer();
 
         return ResponseEntity.ok(
-                orderTrackingService
-                        .getTracking(
-                                customerId,
-                                orderId
-                        )
+                orderTrackingService.getTracking(
+                        customer.getId(),
+                        orderId
+                )
         );
     }
 
-        @PostMapping(
-            "/{orderId}/retry-payment"
-    )
+    @PostMapping("/{orderId}/retry-payment")
     public ResponseEntity<OrderDto> retryPayment(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID orderId,
-            @RequestBody com.foodordering.order.dto.RetryPaymentRequest request
+            @RequestBody(required = false) com.foodordering.order.dto.RetryPaymentRequest request
     ) {
-        UUID customerId = extractUserId(authHeader);
-        requireCustomer(authHeader);
+        User customer = securityUtils.requireCustomer();
 
         com.foodordering.payment.PaymentMethod method =
                 request != null ? request.getPaymentMethod() : com.foodordering.payment.PaymentMethod.MPESA;
         String phone = request != null ? request.getMpesaPhoneNumber() : null;
 
         return ResponseEntity.ok(
-                orderService.retryPayment(customerId, orderId, method, phone)
+                orderService.retryPayment(customer.getId(), orderId, method, phone)
         );
     }
 
-    @GetMapping(
-            "/restaurant/{restaurantId}"
-    )
-    public ResponseEntity<List<OrderDto>>
-    getRestaurantOrders(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID restaurantId
+    @GetMapping("/restaurant/{restaurantId}")
+    public ResponseEntity<List<OrderDto>> getRestaurantOrders(
+            @PathVariable UUID restaurantId
     ) {
-
-        requireRestaurantOwner(
-                authHeader
-        );
-
-        UUID ownerId =
-                extractUserId(
-                        authHeader
-                );
+        User owner = securityUtils.requireOwner();
 
         return ResponseEntity.ok(
-                orderService
-                        .getRestaurantOrders(
-                                ownerId,
-                                restaurantId,
-                                isSuperAdmin(authHeader)
-                        )
+                orderService.getRestaurantOrders(
+                        owner.getId(),
+                        restaurantId,
+                        securityUtils.isSuperAdmin()
+                )
         );
     }
 
-    @PatchMapping(
-            "/{orderId}/status"
-    )
-    public ResponseEntity<OrderDto>
-    updateOrderStatus(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID orderId,
-
-            @Valid
-            @RequestBody
-            UpdateOrderStatusRequest request
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<OrderDto> updateOrderStatus(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody UpdateOrderStatusRequest request
     ) {
-
-        requireRestaurantOwner(
-                authHeader
-        );
-
-        UUID ownerId =
-                extractUserId(
-                        authHeader
-                );
+        User owner = securityUtils.requireOwner();
 
         return ResponseEntity.ok(
-                orderService
-                        .updateOrderStatus(
-                                ownerId,
-                                orderId,
-                                request.getStatus(),
-                                isSuperAdmin(authHeader)
-                        )
+                orderService.updateOrderStatus(
+                        owner.getId(),
+                        orderId,
+                        request.getStatus(),
+                        securityUtils.isSuperAdmin()
+                )
         );
     }
 
-    private UUID extractUserId(
-            String authHeader
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderDto> cancelCustomerOrder(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody CancelOrderRequest request
     ) {
-
-        String token =
-                authHeader.substring(7);
-
-        return jwtUtil
-                .extractUserId(token);
-    }
-
-    private void requireCustomer(
-            String authHeader
-    ) {
-
-        String role =
-                extractRole(
-                        authHeader
-                );
-
-        if (!"CUSTOMER".equals(role)) {
-            throw new ForbiddenOperationException(
-                    "Only customers can access customer orders"
-            );
-        }
-    }
-
-    private void requireRestaurantOwner(
-            String authHeader
-    ) {
-
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        if (
-                authentication != null
-                && authentication
-                        .getAuthorities()
-                        .stream()
-                        .anyMatch(authority ->
-                                isRestaurantOwnerRole(
-                                        authority.getAuthority()
-                                )
-                        )
-        ) {
-            return;
-        }
-
-        String role =
-                extractRole(
-                        authHeader
-                );
-
-        if (!isRestaurantOwnerRole(role)) {
-            throw new ForbiddenOperationException(
-                    "Only restaurant owners can access restaurant orders"
-            );
-        }
-    }
-
-    private String extractRole(
-            String authHeader
-    ) {
-
-        String token =
-                authHeader.substring(7);
-
-        return normalizeRole(
-                jwtUtil.extractRole(token)
-        );
-    }
-
-    @PatchMapping(
-            "/{orderId}/cancel"
-    )
-    public ResponseEntity<OrderDto>
-    cancelCustomerOrder(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID orderId,
-
-            @Valid
-            @RequestBody
-            CancelOrderRequest request
-    ) {
-
-        UUID customerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireCustomer(
-                authHeader
-        );
+        User customer = securityUtils.requireCustomer();
 
         return ResponseEntity.ok(
                 orderService.cancelCustomerOrder(
-                        customerId,
+                        customer.getId(),
                         orderId,
                         request.getReason()
                 )
         );
     }
 
-    @PatchMapping(
-            "/{orderId}/restaurant-cancel"
-    )
-    public ResponseEntity<OrderDto>
-    cancelRestaurantOrder(
-
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID orderId,
-
-            @Valid
-            @RequestBody
-            CancelOrderRequest request
+    @PatchMapping("/{orderId}/restaurant-cancel")
+    public ResponseEntity<OrderDto> cancelRestaurantOrder(
+            @PathVariable UUID orderId,
+            @Valid @RequestBody CancelOrderRequest request
     ) {
-
-        UUID ownerId =
-                extractUserId(
-                        authHeader
-                );
-
-        requireRestaurantOwner(
-                authHeader
-        );
+        User owner = securityUtils.requireOwner();
 
         return ResponseEntity.ok(
                 orderService.cancelRestaurantOrder(
-                        ownerId,
+                        owner.getId(),
                         orderId,
                         request.getReason()
                 )
         );
     }
-
-    private String normalizeRole(
-            String role
-    ) {
-
-        if (role == null || role.isBlank()) {
-            return "";
-        }
-
-        String normalized =
-                role.trim().toUpperCase(Locale.ROOT);
-
-        if (normalized.startsWith("ROLE_")) {
-            normalized =
-                    normalized.substring(5);
-        }
-
-        return normalized;
-    }
-
-    private boolean isRestaurantOwnerRole(
-            String role
-    ) {
-
-        String normalized =
-                normalizeRole(role);
-
-        return "OWNER".equals(normalized)
-                || "RESTAURANT_ADMIN".equals(normalized)
-                || "RESTAURANT_OWNER".equals(normalized)
-                || "ADMIN_RESTAURANT".equals(normalized)
-                || "SUPER_ADMIN".equals(normalized);
-    }
-
-    private boolean isSuperAdmin(
-            String authHeader
-    ) {
-
-        return "SUPER_ADMIN".equals(
-                extractRole(authHeader)
-        );
-    }
-} 
+}

@@ -38,4 +38,18 @@ public interface OrderRepository
     Optional<Order> findFirstByPaymentReferenceStartingWith(
             String prefix
     );
+
+    @EntityGraph(attributePaths = "items")
+    Optional<Order> findByCustomerIdAndIdempotencyKey(
+            UUID customerId,
+            String idempotencyKey
+    );
+
+    Optional<Order> findByProviderTransactionId(
+            String providerTransactionId
+    );
+
+    boolean existsByProviderTransactionId(
+            String providerTransactionId
+    );
 }

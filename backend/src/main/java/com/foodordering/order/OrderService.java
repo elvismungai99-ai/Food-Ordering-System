@@ -97,6 +97,15 @@ public class OrderService {
             );
         }
 
+        // Idempotency: return existing order if same idempotency key was previously submitted
+        if (request != null && request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+            String cleanKey = request.getIdempotencyKey().trim();
+            var existing = orderRepository.findByCustomerIdAndIdempotencyKey(customerId, cleanKey);
+            if (existing.isPresent()) {
+                return new OrderDto(existing.get());
+            }
+        }
+
         /*
          * @Valid should already reject an empty address,
          * but this keeps the service protected when called
@@ -308,6 +317,12 @@ public class OrderService {
                 request.getDeliveryLongitude()
         );
 
+        order.setIdempotencyKey(
+                request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()
+                        ? request.getIdempotencyKey().trim()
+                        : null
+        );
+
         /*
          * New orders begin at PENDING.
          */
@@ -499,6 +514,11 @@ public class OrderService {
                 allowAnyRestaurant
         );
 
+        // Security: Prevent moving a paid order back to PENDING
+        if (order.getPaymentStatus() == PaymentStatus.PAID && newStatus == OrderStatus.PENDING) {
+            throw new BusinessRuleException("A paid order cannot be moved back to pending status");
+        }
+
         orderStateMachine
                 .validateTransition(
                         order.getStatus(),
@@ -601,6 +621,32 @@ public class OrderService {
         );
     }
 
+    @Transactional
+    public OrderDto refundOrder(
+            UUID orderId,
+            String refundReason,
+            UUID actorId
+    ) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getPaymentStatus() != PaymentStatus.PAID) {
+            throw new BusinessRuleException("Only paid orders can be refunded. Current payment status: " + order.getPaymentStatus());
+        }
+
+        order.setPaymentStatus(PaymentStatus.REFUNDED);
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setRefundReason(refundReason != null && !refundReason.isBlank() ? refundReason.trim() : "Administrative refund");
+        order.setRefundedAt(LocalDateTime.now());
+        order.setRefundReference("REFUND-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        order.setCancellationReason("Refunded: " + order.getRefundReason());
+        order.setCancelledAt(LocalDateTime.now());
+
+        Order saved = orderRepository.save(order);
+        paymentService.logRefundAudit(saved, actorId);
+        return new OrderDto(saved);
+    }
+
     private void cancelOrder(
             Order order,
             String reason
@@ -615,6 +661,13 @@ public class OrderService {
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancellationReason(reason.trim());
         order.setCancelledAt(LocalDateTime.now());
+
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            order.setPaymentStatus(PaymentStatus.REFUNDED);
+            order.setRefundReason("Cancelled: " + reason.trim());
+            order.setRefundedAt(LocalDateTime.now());
+            order.setRefundReference("REFUND-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        }
     }
 
     // =========================================================

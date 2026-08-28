@@ -22,9 +22,13 @@ public class OrderDto {
 
     private PaymentStatus paymentStatus;
     private String paymentReference;
+    private String providerTransactionId;
     private PaymentMethod paymentMethod;
     private String cancellationReason;
     private String cancelledAt;
+    private String refundReason;
+    private String refundedAt;
+    private String refundReference;
 
     private OrderStatus status;
     private BigDecimal totalAmount;
@@ -88,11 +92,49 @@ public class OrderDto {
 
         this.paymentStatus = order.getPaymentStatus();
         this.paymentReference = order.getPaymentReference();
+        this.providerTransactionId = order.getProviderTransactionId();
         this.paymentMethod = order.getPaymentMethod();
         this.cancellationReason = order.getCancellationReason();
         this.cancelledAt = order.getCancelledAt() != null
                 ? order.getCancelledAt().toString()
                 : null;
+        this.refundReason = order.getRefundReason();
+        this.refundedAt = order.getRefundedAt() != null
+                ? order.getRefundedAt().toString()
+                : null;
+        this.refundReference = order.getRefundReference();
+    }
+
+    public String getProviderTransactionId() {
+        return providerTransactionId;
+    }
+
+    public void setProviderTransactionId(String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
+    }
+
+    public String getRefundReason() {
+        return refundReason;
+    }
+
+    public void setRefundReason(String refundReason) {
+        this.refundReason = refundReason;
+    }
+
+    public String getRefundedAt() {
+        return refundedAt;
+    }
+
+    public void setRefundedAt(String refundedAt) {
+        this.refundedAt = refundedAt;
+    }
+
+    public String getRefundReference() {
+        return refundReference;
+    }
+
+    public void setRefundReference(String refundReference) {
+        this.refundReference = refundReference;
     }
 
     public UUID getId() {

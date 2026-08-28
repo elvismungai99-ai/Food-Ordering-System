@@ -19,9 +19,18 @@ spring:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:false}
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 5MB
+      max-request-size: 10MB
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+  tomcat:
+    max-swallow-size: 10MB
+    max-http-form-post-size: 10MB
 
 jwt:
   secret: ${JWT_SECRET}
@@ -29,7 +38,9 @@ jwt:
   refresh-token-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
 app:
-  frontend-base-url: http://localhost:5173
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://food-ordering-system-elvis-3170.vercel.app}
   mail:
     from: no-reply@foodordering.local
 
@@ -57,5 +68,3 @@ payments:
 security:
   rate-limit:
     ignore-localhost: false
-
-

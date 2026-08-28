@@ -1,25 +1,32 @@
 package com.foodordering.payment;
 
 import java.util.Map;
+import java.util.UUID;
 
+import com.foodordering.User.entity.User;
+import com.foodordering.security.SecurityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final SecurityUtils securityUtils;
 
+    @Autowired
     public PaymentController(
-            PaymentService paymentService
+            PaymentService paymentService,
+            @Autowired(required = false) SecurityUtils securityUtils
     ) {
         this.paymentService = paymentService;
+        this.securityUtils = securityUtils;
+    }
+
+    public PaymentController(PaymentService paymentService) {
+        this(paymentService, null);
     }
 
     @PostMapping("/mpesa/callback")
@@ -56,5 +63,13 @@ public class PaymentController {
                         "idempotent", result.isIdempotent()
                 )
         );
+    }
+
+    @PostMapping("/reconcile/{orderId}")
+    public ResponseEntity<PaymentResult> reconcileOrderPayment(
+            @PathVariable UUID orderId
+    ) {
+        UUID actorId = securityUtils != null ? securityUtils.getCurrentUserId() : null;
+        return ResponseEntity.ok(paymentService.reconcilePayment(orderId, actorId));
     }
 }

@@ -53,6 +53,9 @@ public class PaymentService {
     private final String mpesaCallbackUrl;
     private final String mpesaCallbackSecret;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.foodordering.audit.AuditLogService auditLogService;
+
     public PaymentService(
             ObjectMapper objectMapper,
             OrderRepository orderRepository,
@@ -247,13 +250,87 @@ public class PaymentService {
 
         String receipt = callback.getMpesaReceiptNumber();
         if (receipt != null && !receipt.isBlank()) {
-            order.setPaymentReference(checkoutRequestId + "|" + receipt);
+            String cleanReceipt = receipt.trim();
+            var existingWithReceipt = orderRepository.findByProviderTransactionId(cleanReceipt);
+            if (existingWithReceipt.isPresent() && !existingWithReceipt.get().getId().equals(order.getId())) {
+                log.error("SECURITY ALERT: Duplicate payment receipt {}! Already assigned to order {}",
+                        cleanReceipt, existingWithReceipt.get().getId());
+                throw new BusinessRuleException("Payment receipt has already been processed for another order");
+            }
+            order.setProviderTransactionId(cleanReceipt);
+            order.setPaymentReference(checkoutRequestId + "|" + cleanReceipt);
         }
 
         orderRepository.save(order);
+        if (auditLogService != null) {
+            auditLogService.logAction("PAYMENT_COMPLETED", order.getId().toString(), "ORDER", "Payment verified via M-Pesa. Receipt: " + receipt);
+        }
         log.info("Order {} successfully verified and marked as PAID. M-Pesa Receipt: {}", order.getId(), receipt);
 
         return new PaymentCallbackResult(true, "PAID", "Payment verified and order marked as paid", false);
+    }
+
+    public void logRefundAudit(Order order, UUID actorId) {
+        if (auditLogService != null) {
+            auditLogService.logAction(
+                    "ORDER_REFUNDED",
+                    order.getId().toString(),
+                    "ORDER",
+                    "Refund issued: " + order.getRefundReason() + ". Ref: " + order.getRefundReference()
+            );
+        }
+        log.info("Order {} refunded. Reason: {}. Reference: {}",
+                order.getId(), order.getRefundReason(), order.getRefundReference());
+    }
+
+    @Transactional
+    public PaymentResult reconcilePayment(UUID orderId, UUID actorId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            return new PaymentResult(true, order.getPaymentReference(), "Order is already paid", PaymentStatus.PAID);
+        }
+
+        if (order.getPaymentMethod() != PaymentMethod.MPESA) {
+            return new PaymentResult(true, order.getPaymentReference(), "Payment method " + order.getPaymentMethod() + " status is " + order.getPaymentStatus(), order.getPaymentStatus());
+        }
+
+        if (order.getPaymentReference() == null || order.getPaymentReference().isBlank()) {
+            throw new BusinessRuleException("Order does not have a checkout reference for reconciliation");
+        }
+
+        String checkoutRequestId = order.getPaymentReference().split("\\|")[0].trim();
+
+        if (mpesaEnabled && isDarajaConfigured()) {
+            try {
+                JsonNode statusResponse = queryMpesaTransactionStatus(checkoutRequestId);
+                if (statusResponse != null) {
+                    int resultCode = statusResponse.path("ResultCode").asInt(-1);
+                    if (resultCode == 0) {
+                        order.setPaymentStatus(PaymentStatus.PAID);
+                        if (order.getStatus() == OrderStatus.PENDING) {
+                            order.setStatus(OrderStatus.CONFIRMED);
+                        }
+                        orderRepository.save(order);
+                        if (auditLogService != null) {
+                            auditLogService.logAction("PAYMENT_RECONCILED", order.getId().toString(), "ORDER", "Payment verified and reconciled via Daraja query");
+                        }
+                        return new PaymentResult(true, order.getPaymentReference(), "Payment verified and reconciled as PAID", PaymentStatus.PAID);
+                    } else {
+                        String resultDesc = statusResponse.path("ResultDesc").asText("Transaction unsuccessful");
+                        order.setPaymentStatus(PaymentStatus.FAILED);
+                        order.setCancellationReason("Reconciliation: " + resultDesc);
+                        orderRepository.save(order);
+                        return new PaymentResult(false, order.getPaymentReference(), "Payment failed: " + resultDesc, PaymentStatus.FAILED);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Direct Daraja reconciliation query failed for order {}: {}", orderId, e.getMessage());
+            }
+        }
+
+        return new PaymentResult(false, order.getPaymentReference(), "Reconciliation completed. Current status: " + order.getPaymentStatus(), order.getPaymentStatus());
     }
 
     private void verifyCallbackSecret(String providedSecret) {

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -17,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,31 +28,17 @@ import com.foodordering.security.ratelimit.LoginRateLimitFilter;
 @Configuration
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter
-            jwtAuthenticationFilter;
-
-    private final LoginRateLimitFilter
-            loginRateLimitFilter;
-
-    private final RestAuthenticationEntryPoint
-            restAuthenticationEntryPoint;
-
-    private final RestAccessDeniedHandler
-            restAccessDeniedHandler;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
+    private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
+    private final RestAccessDeniedHandler restAccessDeniedHandler;
 
     /*
-     * Comma-separated list of origin PATTERNS allowed to call this API.
-     *
-     * Defaults to the local Vite dev servers plus the deployed Vercel
-     * frontend (both the stable production URL and a wildcard pattern
-     * that matches every Vercel preview deployment, since each new
-     * deploy gets a unique hash in the subdomain, e.g.
-     * food-ordering-system-j7iwdncnx-elvis-3170.vercel.app).
-     *
-     * Override at runtime via the `CORS_ALLOWED_ORIGINS` environment
-     * variable if these ever change.
+     * Explicitly allowed origins for CORS.
+     * Restricted to known local development and production URLs.
+     * Wildcard preview deployments are disallowed to prevent credential leakage.
      */
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,https://food-ordering-system-elvis-3170.vercel.app,https://food-ordering-system-*-elvis-3170.vercel.app}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://food-ordering-system-elvis-3170.vercel.app}")
     private String allowedOrigins;
 
     public SecurityConfig(
@@ -59,461 +47,186 @@ public class SecurityConfig {
             RestAuthenticationEntryPoint restAuthenticationEntryPoint,
             RestAccessDeniedHandler restAccessDeniedHandler
     ) {
-
-        this.jwtAuthenticationFilter =
-                jwtAuthenticationFilter;
-
-        this.loginRateLimitFilter =
-                loginRateLimitFilter;
-
-        this.restAuthenticationEntryPoint =
-                restAuthenticationEntryPoint;
-
-        this.restAccessDeniedHandler =
-                restAccessDeniedHandler;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.loginRateLimitFilter = loginRateLimitFilter;
+        this.restAuthenticationEntryPoint = restAuthenticationEntryPoint;
+        this.restAccessDeniedHandler = restAccessDeniedHandler;
     }
 
     // =====================================================
-    // SECURITY FILTER CHAIN
+    // SECURITY FILTER CHAIN (ADMIN)
     // =====================================================
 
     @Bean
     @org.springframework.core.annotation.Order(1)
-    public SecurityFilterChain adminSecurityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
-
+    public SecurityFilterChain adminSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher(
-                        "/api/admin/**"
-                )
-                .cors(cors -> {
-                })
-                .csrf(csrf ->
-                        csrf.disable()
-                )
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
+                .securityMatcher("/api/admin/**")
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .headers(headers -> applySecurityHeaders(headers))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest()
-                        .hasAuthority("ROLE_SUPER_ADMIN")
+                        .anyRequest().hasAuthority("ROLE_SUPER_ADMIN")
                 )
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(
-                                restAuthenticationEntryPoint
-                        )
-                        .accessDeniedHandler(
-                                restAccessDeniedHandler
-                        )
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler)
                 )
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                .addFilterBefore(loginRateLimitFilter, AuthorizationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+    // =====================================================
+    // SECURITY FILTER CHAIN (MAIN)
+    // =====================================================
 
     @Bean
     @org.springframework.core.annotation.Order(2)
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-
-                // =========================================
-                // CORS
-                // =========================================
-
-                .cors(cors -> {
-                })
-
-                // =========================================
-                // CSRF
-                // =========================================
-
-                /*
-                 * This is a stateless JWT REST API.
-                 */
-                .csrf(csrf ->
-                        csrf.disable()
-                )
-
-                // =========================================
-                // SESSION
-                // =========================================
-
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
-
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .headers(headers -> applySecurityHeaders(headers))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint(
-                                restAuthenticationEntryPoint
-                        )
-                        .accessDeniedHandler(
-                                restAccessDeniedHandler
-                        )
+                        .authenticationEntryPoint(restAuthenticationEntryPoint)
+                        .accessDeniedHandler(restAccessDeniedHandler)
                 )
-
-                // =========================================
-                // AUTHORIZATION
-                // =========================================
-
                 .authorizeHttpRequests(auth -> auth
+                        // Browser CORS preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        /*
-                         * Browser CORS preflight.
-                         */
-                        .requestMatchers(
-                                HttpMethod.OPTIONS,
-                                "/**"
-                        )
-                        .permitAll()
+                        // Public authentication endpoints
+                        .requestMatchers("/api/auth/**").permitAll()
 
-                        /*
-                         * IMPORTANT:
-                         *
-                         * Login and registration must
-                         * remain public.
-                         */
-                        .requestMatchers(
-                                "/api/auth/**"
-                        )
-                        .permitAll()
+                        // M-Pesa Webhook Callback
+                        .requestMatchers(HttpMethod.POST, "/api/payments/mpesa/callback").permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/payments/mpesa/callback"
-                        )
-                        .permitAll()
+                        // Public Rider registration
+                        .requestMatchers(HttpMethod.POST, "/api/riders/register").permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/riders/register"
-                        )
-                        .permitAll()
+                        // Super Admin
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_SUPER_ADMIN")
 
-                        // =================================
-                        // SUPER ADMIN
-                        // =================================
+                        // Restaurant Owner & Super Admin management
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/me").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/restaurants", "/api/restaurants/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/restaurants", "/api/restaurants/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/restaurants", "/api/restaurants/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
 
-                        .requestMatchers(
-                                "/api/admin/**"
-                        )
-                        .hasAuthority(
-                                "ROLE_SUPER_ADMIN"
-                        )
+                        // Public browsing
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/categories", "/api/restaurants/{restaurantId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/menu-items/restaurant/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
 
-                        // =================================
-                        // RESTAURANT OWNER
-                        // =================================
+                        // Menu Item management
+                        .requestMatchers(HttpMethod.POST, "/api/menu-items", "/api/menu-items/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/menu-items", "/api/menu-items/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/menu-items", "/api/menu-items/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/menu-items", "/api/menu-items/**").hasAnyAuthority("ROLE_OWNER", "ROLE_SUPER_ADMIN")
 
-                        /*
-                         * The currently authenticated
-                         * OWNER loads their own restaurant.
-                         *
-                         * Keep this BEFORE broader
-                         * restaurant rules.
-                         */
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/restaurants/me"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
+                        // Cart
+                        .requestMatchers("/api/cart", "/api/cart/**").hasAuthority("ROLE_CUSTOMER")
 
-                        /*
-                         * Restaurant creation.
-                         */
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/restaurants",
-                                "/api/restaurants/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
+                        // Orders
+                        .requestMatchers("/api/orders", "/api/orders/**").authenticated()
 
-                        /*
-                         * Restaurant update.
-                         */
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                "/api/restaurants",
-                                "/api/restaurants/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
+                        // Location
+                        .requestMatchers(HttpMethod.GET, "/api/location/reverse").permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.PATCH,
-                                "/api/restaurants",
-                                "/api/restaurants/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
-
-                        // =================================
-                        // PUBLIC RESTAURANT BROWSING
-                        // =================================
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/restaurants",
-                                "/api/restaurants/categories",
-                                "/api/restaurants/{restaurantId}"
-                        )
-                        .permitAll()
-
-                        // =================================
-                        // PUBLIC MENU VIEWING
-                        // =================================
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/menu-items/restaurant/**"
-                        )
-                        .permitAll()
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/reviews/**"
-                        )
-                        .permitAll()
-
-                        // =================================
-                        // MENU MANAGEMENT
-                        // =================================
-
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/menu-items",
-                                "/api/menu-items/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
-
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                "/api/menu-items",
-                                "/api/menu-items/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
-
-                        .requestMatchers(
-                                HttpMethod.DELETE,
-                                "/api/menu-items",
-                                "/api/menu-items/**"
-                        )
-                        .hasAnyAuthority(
-                                "ROLE_OWNER",
-                                "ROLE_SUPER_ADMIN"
-                        )
-
-                        // =================================
-                        // CUSTOMER CART
-                        // =================================
-
-                        .requestMatchers(
-                                "/api/cart",
-                                "/api/cart/**"
-                        )
-                        .hasAuthority(
-                                "ROLE_CUSTOMER"
-                        )
-
-                        // =================================
-                        // ORDERS
-                        // =================================
-
-                        .requestMatchers(
-                                "/api/orders",
-                                "/api/orders/**"
-                        )
-                        .authenticated(
-                        )
-
-                        // =================================
-                        // LIVE DELIVERY LOCATION
-                        // =================================
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/location/reverse"
-                        )
-                        .permitAll()
-
-                        // =================================
-                        // EVERYTHING ELSE
-                        // =================================
-
-                        .anyRequest()
-                        .authenticated()
+                        // All other endpoints require authentication
+                        .anyRequest().authenticated()
                 )
-
-                // =========================================
-
-                // JWT FILTER
-                // =========================================
-
-                .addFilterBefore(
-                        loginRateLimitFilter,
-                        AuthorizationFilter.class
-                )
-
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                .addFilterBefore(loginRateLimitFilter, AuthorizationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    /**
+     * Applies robust HTTP security headers:
+     * - Content Security Policy (CSP)
+     * - X-Content-Type-Options (nosniff)
+     * - Referrer-Policy (strict-origin-when-cross-origin)
+     * - Permissions-Policy (restricted sensor/media access)
+     * - Frame Options (clickjacking prevention: DENY)
+     * - HSTS (HTTP Strict Transport Security)
+     */
+    private void applySecurityHeaders(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer<HttpSecurity> headers) {
+        headers.contentTypeOptions(Customizer.withDefaults());
+        headers.frameOptions(frame -> frame.deny());
+        headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+        headers.permissionsPolicy(permissions -> permissions.policy("geolocation=(self), camera=(), microphone=(), payment=(self)"));
+        headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                "default-src 'self'; " +
+                "script-src 'self'; " +
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                "font-src 'self' https://fonts.gstatic.com data:; " +
+                "img-src 'self' data: https: blob:; " +
+                "connect-src 'self' https:; " +
+                "frame-ancestors 'none'; " +
+                "object-src 'none'; " +
+                "base-uri 'self'; " +
+                "form-action 'self'"
+        ));
+        headers.httpStrictTransportSecurity(hsts -> hsts
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000)
+        );
+    }
+
     // =====================================================
-    // CORS
+    // CORS CONFIGURATION
     // =====================================================
 
     @Bean
-    public FilterRegistrationBean<JwtAuthenticationFilter>
-    jwtAuthenticationFilterRegistration(
-            JwtAuthenticationFilter filter
-    ) {
-
-        FilterRegistrationBean<JwtAuthenticationFilter> registration =
-                new FilterRegistrationBean<>(
-                        filter
-                );
-
-        registration.setEnabled(
-                false
-        );
-
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
         return registration;
     }
 
     @Bean
-    public FilterRegistrationBean<LoginRateLimitFilter>
-    loginRateLimitFilterRegistration(
-            LoginRateLimitFilter filter
-    ) {
-
-        FilterRegistrationBean<LoginRateLimitFilter> registration =
-                new FilterRegistrationBean<>(
-                        filter
-                );
-
-        registration.setEnabled(
-                false
-        );
-
+    public FilterRegistrationBean<LoginRateLimitFilter> loginRateLimitFilterRegistration(LoginRateLimitFilter filter) {
+        FilterRegistrationBean<LoginRateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
         return registration;
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
 
-        CorsConfiguration configuration =
-                new CorsConfiguration();
-
-        /*
-         * React/Vite development frontend by default;
-         * the deployed Vercel origin(s) are added through the
-         * `CORS_ALLOWED_ORIGINS` environment variable.
-         *
-         * Uses origin PATTERNS (not exact origins) so the
-         * wildcard "https://food-ordering-system-*-elvis-3170.vercel.app"
-         * matches every Vercel preview deployment URL, since each
-         * new deploy gets a unique hash in the subdomain.
-         */
-        configuration.setAllowedOriginPatterns(
-                Arrays.stream(
-                        allowedOrigins.split(",")
-                )
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
-                .filter(
-                        origin ->
-                                !origin.isEmpty()
-                )
-                .toList()
-        );
+                .filter(origin -> !origin.isEmpty())
+                .toList();
 
-        configuration.setAllowedMethods(
-                List.of(
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                        "OPTIONS"
-                )
-        );
+        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Callback-Secret"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
-        configuration.setAllowedHeaders(
-                List.of(
-                        "Authorization",
-                        "Content-Type",
-                        "Accept"
-                )
-        );
-
-        configuration.setAllowCredentials(
-                true
-        );
-
-        configuration.setMaxAge(
-                3600L
-        );
-
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 
     // =====================================================
-    // PASSWORD ENCODER
+    // PASSWORD ENCODER & AUTH MANAGER
     // =====================================================
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-
         return new BCryptPasswordEncoder();
     }
 
-    // =====================================================
-    // AUTHENTICATION MANAGER
-    // =====================================================
-
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration
-    ) throws Exception {
-
-        return configuration
-                .getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 }

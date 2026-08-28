@@ -1,7 +1,8 @@
 package com.foodordering.User;
 
 import com.foodordering.User.dto.*;
-import com.foodordering.security.JwtUtil;
+import com.foodordering.User.entity.User;
+import com.foodordering.security.SecurityUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,89 +17,74 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtils securityUtils;
 
-    public UserController(UserService userService, JwtUtil jwtUtil) {
+    public UserController(UserService userService, SecurityUtils securityUtils) {
         this.userService = userService;
-        this.jwtUtil = jwtUtil;
+        this.securityUtils = securityUtils;
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<UserProfileResponse> getProfile(
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        UUID userId = extractUserId(authHeader);
-        return ResponseEntity.ok(userService.getProfile(userId));
+    public ResponseEntity<UserProfileResponse> getProfile() {
+        User user = securityUtils.getCurrentUser();
+        return ResponseEntity.ok(userService.getProfile(user.getId()));
     }
 
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponse> updateProfile(
-            @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody UpdateProfileRequest request
     ) {
-        UUID userId = extractUserId(authHeader);
-        return ResponseEntity.ok(userService.updateProfile(userId, request));
+        User user = securityUtils.getCurrentUser();
+        return ResponseEntity.ok(userService.updateProfile(user.getId(), request));
     }
 
     @PutMapping("/password")
     public ResponseEntity<Map<String, String>> changePassword(
-            @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody ChangePasswordRequest request
     ) {
-        UUID userId = extractUserId(authHeader);
-        userService.changePassword(userId, request);
+        User user = securityUtils.getCurrentUser();
+        userService.changePassword(user.getId(), request);
         return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
     }
 
     @GetMapping("/addresses")
-    public ResponseEntity<List<SavedAddressDto>> getSavedAddresses(
-            @RequestHeader("Authorization") String authHeader
-    ) {
-        UUID userId = extractUserId(authHeader);
-        return ResponseEntity.ok(userService.getSavedAddresses(userId));
+    public ResponseEntity<List<SavedAddressDto>> getSavedAddresses() {
+        User user = securityUtils.requireCustomer();
+        return ResponseEntity.ok(userService.getSavedAddresses(user.getId()));
     }
 
     @PostMapping("/addresses")
     public ResponseEntity<SavedAddressDto> createSavedAddress(
-            @RequestHeader("Authorization") String authHeader,
             @Valid @RequestBody SavedAddressRequest request
     ) {
-        UUID userId = extractUserId(authHeader);
+        User user = securityUtils.requireCustomer();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userService.createSavedAddress(userId, request));
+                .body(userService.createSavedAddress(user.getId(), request));
     }
 
     @PutMapping("/addresses/{addressId}")
     public ResponseEntity<SavedAddressDto> updateSavedAddress(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID addressId,
             @Valid @RequestBody SavedAddressRequest request
     ) {
-        UUID userId = extractUserId(authHeader);
-        return ResponseEntity.ok(userService.updateSavedAddress(userId, addressId, request));
+        User user = securityUtils.requireCustomer();
+        return ResponseEntity.ok(userService.updateSavedAddress(user.getId(), addressId, request));
     }
 
     @DeleteMapping("/addresses/{addressId}")
     public ResponseEntity<Map<String, String>> deleteSavedAddress(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID addressId
     ) {
-        UUID userId = extractUserId(authHeader);
-        userService.deleteSavedAddress(userId, addressId);
+        User user = securityUtils.requireCustomer();
+        userService.deleteSavedAddress(user.getId(), addressId);
         return ResponseEntity.ok(Map.of("message", "Address deleted successfully"));
     }
 
     @PutMapping("/addresses/{addressId}/default")
     public ResponseEntity<SavedAddressDto> setDefaultAddress(
-            @RequestHeader("Authorization") String authHeader,
             @PathVariable UUID addressId
     ) {
-        UUID userId = extractUserId(authHeader);
-        return ResponseEntity.ok(userService.setDefaultAddress(userId, addressId));
-    }
-
-    private UUID extractUserId(String authHeader) {
-        String token = authHeader.replace("Bearer ", "").trim();
-        return jwtUtil.extractUserId(token);
+        User user = securityUtils.requireCustomer();
+        return ResponseEntity.ok(userService.setDefaultAddress(user.getId(), addressId));
     }
 }

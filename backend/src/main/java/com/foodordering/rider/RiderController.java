@@ -1,7 +1,7 @@
 package com.foodordering.rider;
 
+import com.foodordering.User.entity.User;
 import com.foodordering.auth.AuthResponse;
-import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.rider.dto.DeliveryRequestDto;
 import com.foodordering.rider.dto.RejectDeliveryRequest;
 import com.foodordering.rider.dto.RiderAvailabilityRequest;
@@ -9,7 +9,7 @@ import com.foodordering.rider.dto.RiderDashboardDto;
 import com.foodordering.rider.dto.RiderDto;
 import com.foodordering.rider.dto.RiderLocationRequest;
 import com.foodordering.rider.dto.RiderRegistrationRequest;
-import com.foodordering.security.JwtUtil;
+import com.foodordering.security.SecurityUtils;
 
 import jakarta.validation.Valid;
 
@@ -20,11 +20,9 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Locale;
 import java.util.UUID;
 
 @RestController
@@ -32,14 +30,14 @@ import java.util.UUID;
 public class RiderController {
 
     private final RiderService riderService;
-    private final JwtUtil jwtUtil;
+    private final SecurityUtils securityUtils;
 
     public RiderController(
             RiderService riderService,
-            JwtUtil jwtUtil
+            SecurityUtils securityUtils
     ) {
         this.riderService = riderService;
-        this.jwtUtil = jwtUtil;
+        this.securityUtils = securityUtils;
     }
 
     @PostMapping("/register")
@@ -48,7 +46,6 @@ public class RiderController {
             @RequestBody
             RiderRegistrationRequest request
     ) {
-
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(
@@ -59,35 +56,23 @@ public class RiderController {
     }
 
     @GetMapping("/me/dashboard")
-    public ResponseEntity<RiderDashboardDto> getDashboard(
-            @RequestHeader("Authorization")
-            String authHeader
-    ) {
-
-        requireRider(authHeader);
-
+    public ResponseEntity<RiderDashboardDto> getDashboard() {
+        User rider = requireRider();
         return ResponseEntity.ok(
-                riderService.getDashboard(
-                        extractUserId(authHeader)
-                )
+                riderService.getDashboard(rider.getId())
         );
     }
 
     @PatchMapping("/me/availability")
     public ResponseEntity<RiderDto> updateAvailability(
-            @RequestHeader("Authorization")
-            String authHeader,
-
             @Valid
             @RequestBody
             RiderAvailabilityRequest request
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.updateAvailability(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         request
                 )
         );
@@ -95,19 +80,14 @@ public class RiderController {
 
     @PatchMapping("/me/location")
     public ResponseEntity<RiderDto> updateLocation(
-            @RequestHeader("Authorization")
-            String authHeader,
-
             @Valid
             @RequestBody
             RiderLocationRequest request
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.updateLocation(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         request
                 )
         );
@@ -115,18 +95,12 @@ public class RiderController {
 
     @PatchMapping("/delivery-requests/{requestId}/accept")
     public ResponseEntity<DeliveryRequestDto> acceptRequest(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId
+            @PathVariable UUID requestId
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.acceptRequest(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         requestId
                 )
         );
@@ -134,22 +108,15 @@ public class RiderController {
 
     @PatchMapping("/delivery-requests/{requestId}/reject")
     public ResponseEntity<DeliveryRequestDto> rejectRequest(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId,
-
+            @PathVariable UUID requestId,
             @Valid
             @RequestBody
             RejectDeliveryRequest request
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.rejectRequest(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         requestId,
                         request
                 )
@@ -158,11 +125,7 @@ public class RiderController {
 
     @PostMapping("/delivery-requests/{requestId}/timeout")
     public ResponseEntity<DeliveryRequestDto> timeoutRequest(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId
+            @PathVariable UUID requestId
     ) {
         return ResponseEntity.ok(
                 riderService.timeoutAndReassignRequest(requestId)
@@ -171,18 +134,12 @@ public class RiderController {
 
     @PatchMapping("/delivery-requests/{requestId}/arrived-restaurant")
     public ResponseEntity<DeliveryRequestDto> markArrivedAtRestaurant(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId
+            @PathVariable UUID requestId
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.markArrivedAtRestaurant(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         requestId
                 )
         );
@@ -190,18 +147,12 @@ public class RiderController {
 
     @PatchMapping("/delivery-requests/{requestId}/pickup")
     public ResponseEntity<DeliveryRequestDto> confirmPickup(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId
+            @PathVariable UUID requestId
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.confirmPickup(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         requestId
                 )
         );
@@ -209,75 +160,19 @@ public class RiderController {
 
     @PatchMapping("/delivery-requests/{requestId}/delivered")
     public ResponseEntity<DeliveryRequestDto> confirmDelivery(
-            @RequestHeader("Authorization")
-            String authHeader,
-
-            @PathVariable
-            UUID requestId
+            @PathVariable UUID requestId
     ) {
-
-        requireRider(authHeader);
-
+        User rider = requireRider();
         return ResponseEntity.ok(
                 riderService.confirmDelivery(
-                        extractUserId(authHeader),
+                        rider.getId(),
                         requestId
                 )
         );
     }
 
-    private UUID extractUserId(
-            String authHeader
-    ) {
-
-        return jwtUtil.extractUserId(
-                authHeader.substring(7)
-        );
-    }
-
-    private void requireRider(
-            String authHeader
-    ) {
-
-        String role =
-                extractRole(authHeader);
-
-        if (!"RIDER".equals(role)) {
-            throw new ForbiddenOperationException(
-                    "Only riders can access rider features"
-            );
-        }
-    }
-
-    private String extractRole(
-            String authHeader
-    ) {
-
-        if (
-                authHeader == null
-                || !authHeader.startsWith("Bearer ")
-        ) {
-            throw new ForbiddenOperationException(
-                    "Authorization token is missing or invalid"
-            );
-        }
-
-        String role =
-                jwtUtil.extractRole(
-                        authHeader.substring(7)
-                );
-
-        if (role == null || role.isBlank()) {
-            return "";
-        }
-
-        String normalized =
-                role.trim().toUpperCase(Locale.ROOT);
-
-        if (normalized.startsWith("ROLE_")) {
-            normalized = normalized.substring(5);
-        }
-
-        return normalized;
+    private User requireRider() {
+        securityUtils.requireRoles("RIDER");
+        return securityUtils.getCurrentUser();
     }
 }
