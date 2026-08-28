@@ -35,10 +35,9 @@ public class SecurityConfig {
 
     /*
      * Explicitly allowed origins for CORS.
-     * Restricted to known local development and production URLs.
-     * Wildcard preview deployments are disallowed to prevent credential leakage.
+     * Restricted to known local development and user's Vercel deployment URLs.
      */
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://food-ordering-system-elvis-3170.vercel.app}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,https://food-ordering-system-elvis-3170.vercel.app,https://food-ordering-system-git-main-elvis-3170.vercel.app,https://*-elvis-3170.vercel.app}")
     private String allowedOrigins;
 
     public SecurityConfig(
@@ -205,9 +204,9 @@ public class SecurityConfig {
                 .filter(origin -> !origin.isEmpty())
                 .toList();
 
-        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Callback-Secret"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Callback-Secret", "X-Requested-With", "Origin", "Idempotency-Key"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

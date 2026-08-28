@@ -42,6 +42,16 @@ class SecurityHeadersAndCorsTest {
     }
 
     @Test
+    void testCorsAllowsVercelDeployments() throws Exception {
+        mockMvc.perform(options("/api/restaurants")
+                        .header("Origin", "https://food-ordering-system-git-main-elvis-3170.vercel.app")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://food-ordering-system-git-main-elvis-3170.vercel.app"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
     void testCorsDisallowsArbitraryPreviewOrigins() throws Exception {
         mockMvc.perform(options("/api/restaurants")
                         .header("Origin", "https://unauthorized-malicious-site.com")
