@@ -69,6 +69,21 @@ public class Order {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    @Column(name = "idempotency_key", length = 128)
+    private String idempotencyKey;
+
+    @Column(name = "provider_transaction_id", length = 128)
+    private String providerTransactionId;
+
+    @Column(name = "refund_reason", columnDefinition = "TEXT")
+    private String refundReason;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
+    @Column(name = "refund_reference", length = 128)
+    private String refundReference;
+
     @Column(
             name = "total_amount",
             nullable = false,
@@ -478,6 +493,46 @@ public class Order {
         }
     }
 
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getProviderTransactionId() {
+        return providerTransactionId;
+    }
+
+    public void setProviderTransactionId(String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
+    }
+
+    public String getRefundReason() {
+        return refundReason;
+    }
+
+    public void setRefundReason(String refundReason) {
+        this.refundReason = refundReason;
+    }
+
+    public LocalDateTime getRefundedAt() {
+        return refundedAt;
+    }
+
+    public void setRefundedAt(LocalDateTime refundedAt) {
+        this.refundedAt = refundedAt;
+    }
+
+    public String getRefundReference() {
+        return refundReference;
+    }
+
+    public void setRefundReference(String refundReference) {
+        this.refundReference = refundReference;
+    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

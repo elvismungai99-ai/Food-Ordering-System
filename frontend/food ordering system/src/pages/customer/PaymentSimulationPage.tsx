@@ -19,6 +19,7 @@ import {
 import { useCart } from "../../context/CartContext";
 import { buildGoogleMapsPlaceUrl } from "../../utils/location";
 import CustomerHeader from "../../components/customer/CustomerHeader";
+import api from "../../api/axios";
 
 type PaymentFlowState =
   | "IDLE"
@@ -198,6 +199,15 @@ function PaymentSimulationPage() {
     }
   };
 
+  const handleSimulatePinEntry = async (approve: boolean) => {
+    if (!activeOrder) return;
+    try {
+      await api.post(`/payments/simulate-callback/${activeOrder.id}?approve=${approve}`);
+    } catch (err) {
+      console.warn("Simulation call error:", err);
+    }
+  };
+
   // State: Awaiting M-Pesa STK PIN
   if (flowState === "AWAITING_PIN") {
     return (
@@ -233,7 +243,25 @@ function PaymentSimulationPage() {
             <p>3. This screen will update automatically once verified</p>
           </div>
 
-          <div className="mt-6 flex gap-3">
+          {/* Simulation Helper Actions for Fast Testing */}
+          <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => handleSimulatePinEntry(true)}
+              className="w-full rounded-2xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition flex items-center justify-center gap-1.5"
+            >
+              <span>⚡</span> Simulate PIN Approval (Instant Test)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSimulatePinEntry(false)}
+              className="w-full rounded-2xl border border-red-200 bg-red-50/60 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
+            >
+              Simulate PIN Decline / Cancel
+            </button>
+          </div>
+
+          <div className="mt-4 flex gap-3">
             <button
               type="button"
               onClick={() => {
@@ -241,7 +269,7 @@ function PaymentSimulationPage() {
                 if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
                 setFlowState("IDLE");
               }}
-              className="w-full rounded-2xl border border-slate-300 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              className="w-full rounded-2xl border border-slate-300 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
             >
               Cancel / Change Method
             </button>

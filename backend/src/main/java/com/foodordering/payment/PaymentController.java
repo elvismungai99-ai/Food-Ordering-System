@@ -72,4 +72,12 @@ public class PaymentController {
         UUID actorId = securityUtils != null ? securityUtils.getCurrentUserId() : null;
         return ResponseEntity.ok(paymentService.reconcilePayment(orderId, actorId));
     }
+
+    @PostMapping("/simulate-callback/{orderId}")
+    public ResponseEntity<PaymentResult> simulateCallback(
+            @PathVariable UUID orderId,
+            @RequestParam(value = "approve", defaultValue = "true") boolean approve
+    ) {
+        return ResponseEntity.ok(paymentService.simulateMpesaCallback(orderId, approve));
+    }
 }

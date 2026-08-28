@@ -333,6 +333,39 @@ public class PaymentService {
         return new PaymentResult(false, order.getPaymentReference(), "Reconciliation completed. Current status: " + order.getPaymentStatus(), order.getPaymentStatus());
     }
 
+    @Transactional
+    public PaymentResult simulateMpesaCallback(UUID orderId, boolean approve) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            return new PaymentResult(true, order.getPaymentReference(), "Order is already marked as PAID", PaymentStatus.PAID);
+        }
+
+        if (approve) {
+            order.setPaymentStatus(PaymentStatus.PAID);
+            if (order.getStatus() == OrderStatus.PENDING) {
+                order.setStatus(OrderStatus.CONFIRMED);
+            }
+            String receipt = "NLJ" + UUID.randomUUID().toString().replace("-", "").substring(0, 7).toUpperCase();
+            order.setProviderTransactionId(receipt);
+            String checkoutId = order.getPaymentReference() != null ? order.getPaymentReference().split("\\|")[0].trim() : "ws_CO_SIM";
+            order.setPaymentReference(checkoutId + "|" + receipt);
+            orderRepository.save(order);
+            if (auditLogService != null) {
+                auditLogService.logAction("PAYMENT_COMPLETED", order.getId().toString(), "ORDER", "Simulated M-Pesa payment approved. Receipt: " + receipt);
+            }
+            log.info("Simulated M-Pesa payment approved for order {}. Receipt: {}", order.getId(), receipt);
+            return new PaymentResult(true, order.getPaymentReference(), "Payment verified and order confirmed (Simulated)", PaymentStatus.PAID);
+        } else {
+            order.setPaymentStatus(PaymentStatus.FAILED);
+            order.setCancellationReason("Customer rejected M-Pesa PIN prompt (Simulated)");
+            orderRepository.save(order);
+            log.info("Simulated M-Pesa payment rejected for order {}", order.getId());
+            return new PaymentResult(false, order.getPaymentReference(), "M-Pesa payment rejected (Simulated)", PaymentStatus.FAILED);
+        }
+    }
+
     private void verifyCallbackSecret(String providedSecret) {
         if (mpesaCallbackSecret != null && !mpesaCallbackSecret.isBlank()) {
             if (providedSecret == null || !mpesaCallbackSecret.trim().equals(providedSecret.trim())) {
@@ -413,16 +446,19 @@ public class PaymentService {
             BigDecimal amount,
             String phoneNumber
     ) {
-        requireConfigured(
-                mpesaEnabled,
-                "M-Pesa is not enabled. Set MPESA_ENABLED=true after adding Daraja credentials."
-        );
         requireText(phoneNumber, "M-Pesa phone number is required");
-        requireText(mpesaConsumerKey, "MPESA_CONSUMER_KEY is required");
-        requireText(mpesaConsumerSecret, "MPESA_CONSUMER_SECRET is required");
-        requireText(mpesaShortcode, "MPESA_SHORTCODE is required");
-        requireText(mpesaPasskey, "MPESA_PASSKEY is required");
-        requireText(mpesaCallbackUrl, "MPESA_CALLBACK_URL is required");
+
+        // Graceful Sandbox / Local Simulation fallback if live Daraja credentials are not configured
+        if (!mpesaEnabled || !isDarajaConfigured()) {
+            String simCheckoutId = "ws_CO_SIM_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+            log.info("M-Pesa running in Sandbox/Simulation mode. Simulated STK push generated for phone {}: {}", phoneNumber, simCheckoutId);
+            return new PaymentResult(
+                    true,
+                    simCheckoutId,
+                    "M-Pesa STK push prompt sent (Simulation Mode). Awaiting PIN confirmation.",
+                    PaymentStatus.PENDING
+            );
+        }
 
         try {
             String accessToken = getMpesaAccessToken();
