@@ -26,6 +26,15 @@ public class LocationController {
             @RequestParam BigDecimal lat,
             @RequestParam BigDecimal lon
     ) {
+        if (lat == null || lon == null) {
+            throw new com.foodordering.common.exception.BusinessRuleException("Latitude and longitude coordinates are required");
+        }
+        if (lat.compareTo(BigDecimal.valueOf(-90)) < 0 || lat.compareTo(BigDecimal.valueOf(90)) > 0) {
+            throw new com.foodordering.common.exception.BusinessRuleException("Latitude must be between -90.0 and +90.0");
+        }
+        if (lon.compareTo(BigDecimal.valueOf(-180)) < 0 || lon.compareTo(BigDecimal.valueOf(180)) > 0) {
+            throw new com.foodordering.common.exception.BusinessRuleException("Longitude must be between -180.0 and +180.0");
+        }
 
         return locationService.reverseGeocode(
                 lat,

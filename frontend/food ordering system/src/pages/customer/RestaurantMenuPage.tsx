@@ -421,9 +421,14 @@ function RestaurantMenuPage() {
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-800">
-                      {review.rating} / 5
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800">
+                        ⭐ {review.rating} / 5
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        • {review.customerDisplayName || "Verified Customer"}
+                      </span>
+                    </div>
 
                     <span className="text-xs text-slate-400">
                       {formatReviewDate(review.createdAt)}

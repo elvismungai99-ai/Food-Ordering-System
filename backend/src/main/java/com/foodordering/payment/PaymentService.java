@@ -334,9 +334,18 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResult simulateMpesaCallback(UUID orderId, boolean approve) {
+    public PaymentResult simulateMpesaCallback(UUID orderId, boolean approve, UUID actorId, boolean isSuperAdmin) {
+        if (mpesaEnabled && isDarajaConfigured()) {
+            throw new ForbiddenOperationException("Payment simulation is disabled when live M-Pesa is configured");
+        }
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        // Security check: Only the customer who owns the order or a Super Admin can simulate payment
+        if (!isSuperAdmin && (actorId == null || !actorId.equals(order.getCustomerId()))) {
+            throw new ForbiddenOperationException("You can simulate payment only for your own order");
+        }
 
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
             return new PaymentResult(true, order.getPaymentReference(), "Order is already marked as PAID", PaymentStatus.PAID);
@@ -364,6 +373,10 @@ public class PaymentService {
             log.info("Simulated M-Pesa payment rejected for order {}", order.getId());
             return new PaymentResult(false, order.getPaymentReference(), "M-Pesa payment rejected (Simulated)", PaymentStatus.FAILED);
         }
+    }
+
+    public PaymentResult simulateMpesaCallback(UUID orderId, boolean approve) {
+        return simulateMpesaCallback(orderId, approve, null, true);
     }
 
     private void verifyCallbackSecret(String providedSecret) {

@@ -5,13 +5,14 @@ import {
 
 export interface Review {
   id: string;
-  orderId: string;
-  customerId: string;
+  orderId?: string;
+  customerId?: string;
   restaurantId: string;
   menuItemId?: string | null;
   rating: number;
   comment?: string | null;
   createdAt: string;
+  customerDisplayName?: string;
 }
 
 export interface CreateReviewRequest {

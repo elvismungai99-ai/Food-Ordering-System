@@ -6,6 +6,7 @@ import com.foodordering.User.repository.UserRepository;
 import com.foodordering.auth.AuthResponse;
 import com.foodordering.common.exception.BusinessRuleException;
 import com.foodordering.common.exception.ConflictException;
+import com.foodordering.common.exception.ForbiddenOperationException;
 import com.foodordering.common.exception.ResourceNotFoundException;
 import com.foodordering.order.Order;
 import com.foodordering.order.OrderRepository;
@@ -589,10 +590,26 @@ public class RiderService {
 
     @Transactional
     public DeliveryRequestDto timeoutAndReassignRequest(
-            UUID requestId
+            UUID requestId,
+            UUID callerUserId,
+            boolean isSuperAdmin
     ) {
         DeliveryRequest request = deliveryRequestRepository.findById(requestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Delivery request not found"));
+
+        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId()).orElse(null);
+
+        // Security check: Caller must be the restaurant owner, the assigned rider, or a Super Admin
+        if (!isSuperAdmin && callerUserId != null) {
+            boolean isRestaurantOwner = restaurant != null && callerUserId.equals(restaurant.getOwnerId());
+            boolean isAssignedRider = riderRepository.findById(request.getRiderId())
+                    .map(r -> callerUserId.equals(r.getUserId()))
+                    .orElse(false);
+
+            if (!isRestaurantOwner && !isAssignedRider) {
+                throw new ForbiddenOperationException("You do not have permission to timeout this delivery request");
+            }
+        }
 
         if (request.getStatus() == DeliveryRequestStatus.REQUESTED) {
             request.setStatus(DeliveryRequestStatus.REJECTED);
@@ -601,7 +618,6 @@ public class RiderService {
             deliveryRequestRepository.save(request);
 
             // Attempt automatic reassignment to next best available rider
-            Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId()).orElse(null);
             Order order = orderRepository.findById(request.getOrderId()).orElse(null);
             if (restaurant != null && order != null && request.getRestaurantLatitude() != null && request.getRestaurantLongitude() != null) {
                 try {
@@ -618,6 +634,10 @@ public class RiderService {
         }
 
         return new DeliveryRequestDto(request);
+    }
+
+    public DeliveryRequestDto timeoutAndReassignRequest(UUID requestId) {
+        return timeoutAndReassignRequest(requestId, null, true);
     }
 
     @Transactional

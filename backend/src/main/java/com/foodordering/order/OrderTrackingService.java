@@ -89,6 +89,10 @@ public class OrderTrackingService {
         boolean hasDeliveryRequest =
                 deliveryRequest != null;
 
+        boolean isDeliveryActive = order.getStatus() == OrderStatus.OUT_FOR_DELIVERY
+                || order.getStatus() == OrderStatus.READY_FOR_PICKUP
+                || order.getStatus() == OrderStatus.PREPARING;
+
         Integer etaMinutes = switch (order.getStatus()) {
             case PENDING, CONFIRMED -> 35;
             case PREPARING -> 25;
@@ -118,7 +122,7 @@ public class OrderTrackingService {
                 rider != null
                         ? rider.getFullName()
                         : null,
-                rider != null
+                rider != null && isDeliveryActive
                         ? rider.getPhoneNumber()
                         : null,
                 rider != null
@@ -127,13 +131,13 @@ public class OrderTrackingService {
                 rider != null
                         ? rider.getLicencePlate()
                         : null,
-                rider != null
+                rider != null && isDeliveryActive
                         ? rider.getCurrentLatitude()
                         : null,
-                rider != null
+                rider != null && isDeliveryActive
                         ? rider.getCurrentLongitude()
                         : null,
-                rider != null
+                rider != null && isDeliveryActive
                         ? rider.getLastLocationUpdatedAt()
                         : null,
                 hasDeliveryRequest

@@ -20,15 +20,25 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final OrderRepository orderRepository;
+    private final com.foodordering.User.repository.UserRepository userRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ReviewService(
+            ReviewRepository reviewRepository,
+            OrderRepository orderRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.foodordering.User.repository.UserRepository userRepository
+    ) {
+        this.reviewRepository = reviewRepository;
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+    }
 
     public ReviewService(
             ReviewRepository reviewRepository,
             OrderRepository orderRepository
     ) {
-        this.reviewRepository =
-                reviewRepository;
-        this.orderRepository =
-                orderRepository;
+        this(reviewRepository, orderRepository, null);
     }
 
     @Transactional
@@ -112,22 +122,20 @@ public class ReviewService {
                         : request.getComment().trim()
         );
 
-        return new ReviewDto(
-                reviewRepository.save(review)
-        );
+        Review saved = reviewRepository.save(review);
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)
     public List<ReviewDto> getRestaurantReviews(
             UUID restaurantId
     ) {
-
         return reviewRepository
                 .findByRestaurantIdAndMenuItemIdIsNullOrderByCreatedAtDesc(
                         restaurantId
                 )
                 .stream()
-                .map(ReviewDto::new)
+                .map(this::toDto)
                 .toList();
     }
 
@@ -135,13 +143,36 @@ public class ReviewService {
     public List<ReviewDto> getMenuItemReviews(
             UUID menuItemId
     ) {
-
         return reviewRepository
                 .findByMenuItemIdOrderByCreatedAtDesc(
                         menuItemId
                 )
                 .stream()
-                .map(ReviewDto::new)
+                .map(this::toDto)
                 .toList();
+    }
+
+    private ReviewDto toDto(Review review) {
+        String displayName = resolveCustomerDisplayName(review.getCustomerId());
+        return new ReviewDto(review, displayName);
+    }
+
+    private String resolveCustomerDisplayName(UUID customerId) {
+        if (customerId == null || userRepository == null) {
+            return "Verified Customer";
+        }
+        return userRepository.findById(customerId)
+                .map(user -> {
+                    String first = user.getFirstName();
+                    String last = user.getLastName();
+                    if (first != null && !first.isBlank()) {
+                        if (last != null && !last.isBlank()) {
+                            return first.trim() + " " + last.trim().charAt(0) + ".";
+                        }
+                        return first.trim();
+                    }
+                    return "Verified Customer";
+                })
+                .orElse("Verified Customer");
     }
 }

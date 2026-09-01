@@ -127,8 +127,14 @@ public class RiderController {
     public ResponseEntity<DeliveryRequestDto> timeoutRequest(
             @PathVariable UUID requestId
     ) {
+        User caller = securityUtils.getCurrentUser();
+        boolean isSuperAdmin = securityUtils.isSuperAdmin();
         return ResponseEntity.ok(
-                riderService.timeoutAndReassignRequest(requestId)
+                riderService.timeoutAndReassignRequest(
+                        requestId,
+                        caller != null ? caller.getId() : null,
+                        isSuperAdmin
+                )
         );
     }
 

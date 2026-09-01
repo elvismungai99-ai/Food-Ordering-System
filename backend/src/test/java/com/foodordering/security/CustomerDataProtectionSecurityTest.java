@@ -74,6 +74,12 @@ class CustomerDataProtectionSecurityTest {
     private com.foodordering.auth.RefreshTokenRepository refreshTokenRepository;
 
     @Mock
+    private com.foodordering.rider.DeliveryRequestRepository deliveryRequestRepository;
+
+    @Mock
+    private com.foodordering.rider.RiderRepository riderRepository;
+
+    @Mock
     private com.foodordering.payment.PaymentService paymentService;
 
     private SecurityUtils securityUtils;
@@ -82,6 +88,7 @@ class CustomerDataProtectionSecurityTest {
     private ReviewService reviewService;
     private MenuItemController menuItemController;
     private com.foodordering.order.OrderService orderService;
+    private com.foodordering.order.OrderTrackingService orderTrackingService;
 
     private User customerA;
     private User customerB;
@@ -100,7 +107,7 @@ class CustomerDataProtectionSecurityTest {
         );
         cartService = new CartService(cartRepository, menuItemRepository, restaurantService, pricingService);
         userService = new UserService(userRepository, savedAddressRepository, passwordEncoder, refreshTokenRepository);
-        reviewService = new ReviewService(reviewRepository, orderRepository);
+        reviewService = new ReviewService(reviewRepository, orderRepository, userRepository);
         menuItemController = new MenuItemController(menuItemRepository, restaurantRepository, reviewRepository, securityUtils);
         orderService = new com.foodordering.order.OrderService(
                 orderRepository,
@@ -111,6 +118,11 @@ class CustomerDataProtectionSecurityTest {
                 paymentService,
                 pricingService,
                 new com.foodordering.order.OrderStateMachine()
+        );
+        orderTrackingService = new com.foodordering.order.OrderTrackingService(
+                orderRepository,
+                deliveryRequestRepository,
+                riderRepository
         );
 
         customerA = new User();
@@ -344,5 +356,89 @@ class CustomerDataProtectionSecurityTest {
         );
 
         assertTrue(exception.getMessage().contains("You can access only orders for your own restaurant"));
+    }
+
+    @Test
+    void testOrderTracking_MasksRiderLocationWhenDelivered() {
+        UUID orderId = UUID.randomUUID();
+        com.foodordering.order.Order order = new com.foodordering.order.Order();
+        order.setId(orderId);
+        order.setCustomerId(customerA.getId());
+        order.setStatus(com.foodordering.order.OrderStatus.DELIVERED); // Order already completed!
+
+        com.foodordering.rider.Rider rider = new com.foodordering.rider.Rider();
+        rider.setId(UUID.randomUUID());
+        rider.setFullName("John Rider");
+        rider.setPhoneNumber("0712345678");
+        rider.setCurrentLatitude(BigDecimal.valueOf(-1.286389));
+        rider.setCurrentLongitude(BigDecimal.valueOf(36.817223));
+        rider.setVehicleType(com.foodordering.rider.VehicleType.MOTORCYCLE);
+        rider.setLicencePlate("KMCE 123X");
+
+        com.foodordering.rider.DeliveryRequest request = new com.foodordering.rider.DeliveryRequest();
+        request.setOrderId(orderId);
+        request.setRiderId(rider.getId());
+        request.setStatus(com.foodordering.rider.DeliveryRequestStatus.DELIVERED);
+
+        when(orderRepository.findByIdAndCustomerId(orderId, customerA.getId())).thenReturn(Optional.of(order));
+        when(deliveryRequestRepository.findByOrderId(orderId)).thenReturn(Optional.of(request));
+        when(riderRepository.findById(rider.getId())).thenReturn(Optional.of(rider));
+
+        com.foodordering.order.dto.OrderTrackingDto tracking = orderTrackingService.getTracking(customerA.getId(), orderId);
+
+        // Security check: GPS coordinates and personal phone are masked once delivery is complete
+        assertNull(tracking.riderLatitude());
+        assertNull(tracking.riderLongitude());
+        assertNull(tracking.riderPhoneNumber());
+    }
+
+    @Test
+    void testOrderTracking_ShowsRiderLocationWhenOutForDelivery() {
+        UUID orderId = UUID.randomUUID();
+        com.foodordering.order.Order order = new com.foodordering.order.Order();
+        order.setId(orderId);
+        order.setCustomerId(customerA.getId());
+        order.setStatus(com.foodordering.order.OrderStatus.OUT_FOR_DELIVERY); // Active delivery!
+
+        com.foodordering.rider.Rider rider = new com.foodordering.rider.Rider();
+        rider.setId(UUID.randomUUID());
+        rider.setFullName("John Rider");
+        rider.setPhoneNumber("0712345678");
+        rider.setCurrentLatitude(BigDecimal.valueOf(-1.286389));
+        rider.setCurrentLongitude(BigDecimal.valueOf(36.817223));
+        rider.setVehicleType(com.foodordering.rider.VehicleType.MOTORCYCLE);
+        rider.setLicencePlate("KMCE 123X");
+
+        com.foodordering.rider.DeliveryRequest request = new com.foodordering.rider.DeliveryRequest();
+        request.setOrderId(orderId);
+        request.setRiderId(rider.getId());
+        request.setStatus(com.foodordering.rider.DeliveryRequestStatus.PICKED_UP);
+
+        when(orderRepository.findByIdAndCustomerId(orderId, customerA.getId())).thenReturn(Optional.of(order));
+        when(deliveryRequestRepository.findByOrderId(orderId)).thenReturn(Optional.of(request));
+        when(riderRepository.findById(rider.getId())).thenReturn(Optional.of(rider));
+
+        com.foodordering.order.dto.OrderTrackingDto tracking = orderTrackingService.getTracking(customerA.getId(), orderId);
+
+        // Active delivery: Live GPS coordinates and phone are visible to customer
+        assertEquals(BigDecimal.valueOf(-1.286389), tracking.riderLatitude());
+        assertEquals(BigDecimal.valueOf(36.817223), tracking.riderLongitude());
+        assertEquals("0712345678", tracking.riderPhoneNumber());
+    }
+
+    @Test
+    void testLocationReverse_OutOfBoundsCoordinatesRejected() {
+        com.foodordering.location.LocationController locationController =
+                new com.foodordering.location.LocationController(null);
+
+        // Latitude > 90
+        assertThrows(com.foodordering.common.exception.BusinessRuleException.class, () ->
+                locationController.reverse(BigDecimal.valueOf(95.0), BigDecimal.valueOf(36.0))
+        );
+
+        // Longitude > 180
+        assertThrows(com.foodordering.common.exception.BusinessRuleException.class, () ->
+                locationController.reverse(BigDecimal.valueOf(-1.2), BigDecimal.valueOf(185.0))
+        );
     }
 }

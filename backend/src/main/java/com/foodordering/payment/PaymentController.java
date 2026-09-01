@@ -34,20 +34,12 @@ public class PaymentController {
             @RequestHeader(value = "X-Callback-Secret", required = false)
             String secretHeader,
 
-            @RequestParam(value = "secret", required = false)
-            String secretParam,
-
-            @RequestParam(value = "token", required = false)
-            String tokenParam,
-
             @RequestBody
             MpesaCallbackRequest request
     ) {
         String providedSecret = secretHeader != null && !secretHeader.isBlank()
                 ? secretHeader.trim()
-                : secretParam != null && !secretParam.isBlank()
-                ? secretParam.trim()
-                : tokenParam != null ? tokenParam.trim() : null;
+                : null;
 
         PaymentCallbackResult result = paymentService.handleMpesaCallback(
                 request,
@@ -78,6 +70,8 @@ public class PaymentController {
             @PathVariable UUID orderId,
             @RequestParam(value = "approve", defaultValue = "true") boolean approve
     ) {
-        return ResponseEntity.ok(paymentService.simulateMpesaCallback(orderId, approve));
+        UUID actorId = securityUtils != null ? securityUtils.getCurrentUserId() : null;
+        boolean isSuperAdmin = securityUtils != null && securityUtils.isSuperAdmin();
+        return ResponseEntity.ok(paymentService.simulateMpesaCallback(orderId, approve, actorId, isSuperAdmin));
     }
 }

@@ -293,5 +293,38 @@ class PaymentCallbackSecurityTest {
                 paymentService.handleMpesaCallback(callbackRequest, testSecret)
         );
     }
+
+    @Test
+    void testSimulateMpesaCallback_CustomerCannotSimulateOtherCustomersOrder() {
+        UUID orderId = UUID.randomUUID();
+        UUID ownerCustomerId = UUID.randomUUID();
+        UUID attackerCustomerId = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("500.00");
+
+        Order order = createTestOrder(orderId, ownerCustomerId, "ws_CO_SIM_1", amount);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        // Attacker attempts to simulate and approve payment for an order they do not own
+        assertThrows(ForbiddenOperationException.class, () ->
+                paymentService.simulateMpesaCallback(orderId, true, attackerCustomerId, false)
+        );
+    }
+
+    @Test
+    void testSimulateMpesaCallback_OrderOwnerCanSimulateInDevMode() {
+        UUID orderId = UUID.randomUUID();
+        UUID ownerCustomerId = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("500.00");
+
+        Order order = createTestOrder(orderId, ownerCustomerId, "ws_CO_SIM_2", amount);
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        PaymentResult result = paymentService.simulateMpesaCallback(orderId, true, ownerCustomerId, false);
+
+        assertTrue(result.isSuccessful());
+        assertEquals(PaymentStatus.PAID, order.getPaymentStatus());
+        assertEquals(OrderStatus.CONFIRMED, order.getStatus());
+        verify(orderRepository).save(order);
+    }
 }
 
