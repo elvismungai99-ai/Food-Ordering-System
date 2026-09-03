@@ -441,4 +441,46 @@ class CustomerDataProtectionSecurityTest {
                 locationController.reverse(BigDecimal.valueOf(-1.2), BigDecimal.valueOf(185.0))
         );
     }
+
+    @Test
+    void testRestaurantOpeningHours_EAT_DayAndNightSchedules() {
+        com.foodordering.restaurant.RestaurantService realRestaurantService =
+                new com.foodordering.restaurant.RestaurantService(restaurantRepository, null, "Africa/Nairobi");
+
+        Restaurant restaurant = new Restaurant();
+        restaurant.setId(UUID.randomUUID());
+        restaurant.setName("Nairobi Grill");
+        restaurant.setStatus(com.foodordering.restaurant.RestaurantStatus.APPROVED);
+        restaurant.setOpeningTime(java.time.LocalTime.of(8, 0));
+        restaurant.setClosingTime(java.time.LocalTime.of(22, 0));
+
+        // Daytime: 09:47 AM -> should be open
+        assertTrue(realRestaurantService.isWithinOpeningHours(restaurant, java.time.LocalTime.of(9, 47)));
+
+        // Daytime: 07:30 AM -> should be closed
+        assertFalse(realRestaurantService.isWithinOpeningHours(restaurant, java.time.LocalTime.of(7, 30)));
+
+        // Daytime: 23:00 PM -> should be closed
+        assertFalse(realRestaurantService.isWithinOpeningHours(restaurant, java.time.LocalTime.of(23, 0)));
+
+        // Overnight restaurant (18:00 to 04:00)
+        Restaurant nightClub = new Restaurant();
+        nightClub.setStatus(com.foodordering.restaurant.RestaurantStatus.APPROVED);
+        nightClub.setOpeningTime(java.time.LocalTime.of(18, 0));
+        nightClub.setClosingTime(java.time.LocalTime.of(4, 0));
+
+        // 02:00 AM -> should be open
+        assertTrue(realRestaurantService.isWithinOpeningHours(nightClub, java.time.LocalTime.of(2, 0)));
+        // 19:00 PM -> should be open
+        assertTrue(realRestaurantService.isWithinOpeningHours(nightClub, java.time.LocalTime.of(19, 0)));
+        // 12:00 PM (noon) -> should be closed
+        assertFalse(realRestaurantService.isWithinOpeningHours(nightClub, java.time.LocalTime.of(12, 0)));
+
+        // 24/7 Restaurant (00:00 to 00:00 or null hours)
+        Restaurant openAllDay = new Restaurant();
+        openAllDay.setStatus(com.foodordering.restaurant.RestaurantStatus.APPROVED);
+        openAllDay.setOpeningTime(java.time.LocalTime.of(0, 0));
+        openAllDay.setClosingTime(java.time.LocalTime.of(0, 0));
+        assertTrue(realRestaurantService.isWithinOpeningHours(openAllDay, java.time.LocalTime.of(14, 30)));
+    }
 }

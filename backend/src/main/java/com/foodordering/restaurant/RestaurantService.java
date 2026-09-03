@@ -17,15 +17,27 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final ReviewRepository reviewRepository;
+    private final String appTimezone;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RestaurantService(
+            RestaurantRepository restaurantRepository,
+            ReviewRepository reviewRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.timezone:Africa/Nairobi}")
+            String appTimezone
+    ) {
+        this.restaurantRepository = restaurantRepository;
+        this.reviewRepository = reviewRepository;
+        this.appTimezone = appTimezone != null && !appTimezone.isBlank()
+                ? appTimezone.trim()
+                : "Africa/Nairobi";
+    }
 
     public RestaurantService(
             RestaurantRepository restaurantRepository,
             ReviewRepository reviewRepository
     ) {
-        this.restaurantRepository =
-                restaurantRepository;
-        this.reviewRepository =
-                reviewRepository;
+        this(restaurantRepository, reviewRepository, "Africa/Nairobi");
     }
 
     @Transactional
@@ -224,35 +236,48 @@ public class RestaurantService {
     public boolean isWithinOpeningHours(
             Restaurant restaurant
     ) {
+        java.time.ZoneId timezone;
+        try {
+            timezone = java.time.ZoneId.of(appTimezone);
+        } catch (Exception e) {
+            timezone = java.time.ZoneId.of("Africa/Nairobi");
+        }
 
-        if (
-                restaurant == null
-                || restaurant.getOpeningTime() == null
-                || restaurant.getClosingTime() == null
-        ) {
+        return isWithinOpeningHours(restaurant, LocalTime.now(timezone));
+    }
+
+    public boolean isWithinOpeningHours(
+            Restaurant restaurant,
+            LocalTime now
+    ) {
+        if (restaurant == null) {
             return false;
         }
 
-        LocalTime now =
-                LocalTime.now();
+        // If operating hours are not configured, treat restaurant as open
+        if (restaurant.getOpeningTime() == null || restaurant.getClosingTime() == null) {
+            return true;
+        }
 
-        LocalTime openingTime =
-                restaurant.getOpeningTime();
+        LocalTime openingTime = restaurant.getOpeningTime();
+        LocalTime closingTime = restaurant.getClosingTime();
 
-        LocalTime closingTime =
-                restaurant.getClosingTime();
-
+        // 24/7 restaurants (e.g., 00:00 to 00:00)
         if (openingTime.equals(closingTime)) {
-            return false;
+            return true;
+        }
+
+        if (now == null) {
+            return true;
         }
 
         if (openingTime.isBefore(closingTime)) {
-            return !now.isBefore(openingTime)
-                    && now.isBefore(closingTime);
+            // Standard daytime schedule (e.g., 08:00 to 22:00)
+            return !now.isBefore(openingTime) && now.isBefore(closingTime);
         }
 
-        return !now.isBefore(openingTime)
-                || now.isBefore(closingTime);
+        // Overnight schedule (e.g., 18:00 to 04:00 next morning)
+        return !now.isBefore(openingTime) || now.isBefore(closingTime);
     }
 
     private RestaurantDto toDto(
