@@ -36,6 +36,10 @@ public class LocationController {
             throw new com.foodordering.common.exception.BusinessRuleException("Longitude must be between -180.0 and +180.0");
         }
 
+        if (locationService == null) {
+            return new ReverseGeocodeResponse("");
+        }
+
         return locationService.reverseGeocode(
                 lat,
                 lon

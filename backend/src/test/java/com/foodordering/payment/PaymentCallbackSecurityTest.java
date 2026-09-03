@@ -326,5 +326,16 @@ class PaymentCallbackSecurityTest {
         assertEquals(OrderStatus.CONFIRMED, order.getStatus());
         verify(orderRepository).save(order);
     }
+
+    @Test
+    void testNormalizeKenyanPhone_SupportsAllPrefixes() {
+        assertEquals("254742727790", paymentService.normalizeKenyanPhone("0742727790"));
+        assertEquals("254112345678", paymentService.normalizeKenyanPhone("0112345678"));
+        assertEquals("254742727790", paymentService.normalizeKenyanPhone("742727790"));
+        assertEquals("254112345678", paymentService.normalizeKenyanPhone("112345678"));
+        assertEquals("254742727790", paymentService.normalizeKenyanPhone("+254742727790"));
+        assertEquals("254742727790", paymentService.normalizeKenyanPhone("254742727790"));
+        assertEquals("254742727790", paymentService.normalizeKenyanPhone(" 0742 727 790 "));
+    }
 }
 

@@ -46,6 +46,7 @@ public class PaymentService {
 
     private final boolean mpesaEnabled;
     private final String mpesaEnvironment;
+    private final String mpesaTransactionType;
     private final String mpesaConsumerKey;
     private final String mpesaConsumerSecret;
     private final String mpesaShortcode;
@@ -56,6 +57,7 @@ public class PaymentService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.foodordering.audit.AuditLogService auditLogService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public PaymentService(
             ObjectMapper objectMapper,
             OrderRepository orderRepository,
@@ -64,6 +66,8 @@ public class PaymentService {
             boolean mpesaEnabled,
             @Value("${payments.mpesa.environment:sandbox}")
             String mpesaEnvironment,
+            @Value("${payments.mpesa.transaction-type:CustomerPayBillOnline}")
+            String mpesaTransactionType,
             @Value("${payments.mpesa.consumer-key:}")
             String mpesaConsumerKey,
             @Value("${payments.mpesa.consumer-secret:}")
@@ -82,12 +86,44 @@ public class PaymentService {
         this.userRepository = userRepository;
         this.mpesaEnabled = mpesaEnabled;
         this.mpesaEnvironment = mpesaEnvironment;
+        this.mpesaTransactionType = mpesaTransactionType != null && !mpesaTransactionType.isBlank()
+                ? mpesaTransactionType.trim()
+                : "CustomerPayBillOnline";
         this.mpesaConsumerKey = mpesaConsumerKey;
         this.mpesaConsumerSecret = mpesaConsumerSecret;
         this.mpesaShortcode = mpesaShortcode;
         this.mpesaPasskey = mpesaPasskey;
         this.mpesaCallbackUrl = mpesaCallbackUrl;
         this.mpesaCallbackSecret = mpesaCallbackSecret;
+    }
+
+    public PaymentService(
+            ObjectMapper objectMapper,
+            OrderRepository orderRepository,
+            UserRepository userRepository,
+            boolean mpesaEnabled,
+            String mpesaEnvironment,
+            String mpesaConsumerKey,
+            String mpesaConsumerSecret,
+            String mpesaShortcode,
+            String mpesaPasskey,
+            String mpesaCallbackUrl,
+            String mpesaCallbackSecret
+    ) {
+        this(
+                objectMapper,
+                orderRepository,
+                userRepository,
+                mpesaEnabled,
+                mpesaEnvironment,
+                "CustomerPayBillOnline",
+                mpesaConsumerKey,
+                mpesaConsumerSecret,
+                mpesaShortcode,
+                mpesaPasskey,
+                mpesaCallbackUrl,
+                mpesaCallbackSecret
+        );
     }
 
     public PaymentResult processPayment(
@@ -487,15 +523,25 @@ public class PaymentService {
                 finalCallbackUrl += (mpesaCallbackUrl.contains("?") ? "&" : "?") + "secret=" + mpesaCallbackSecret.trim();
             }
 
+            String normalizedPhone = normalizeKenyanPhone(phoneNumber);
+            if (normalizedPhone.length() != 12 || !normalizedPhone.startsWith("254")) {
+                return new PaymentResult(
+                        false,
+                        null,
+                        "Invalid Kenyan phone number format. Please enter a valid number (e.g. 0712345678 or 0112345678).",
+                        PaymentStatus.FAILED
+                );
+            }
+
             Map<String, Object> payload = Map.ofEntries(
                     entry("BusinessShortCode", mpesaShortcode),
                     entry("Password", password),
                     entry("Timestamp", timestamp),
-                    entry("TransactionType", "CustomerPayBillOnline"),
+                    entry("TransactionType", mpesaTransactionType),
                     entry("Amount", amount.setScale(0, RoundingMode.HALF_UP).intValue()),
-                    entry("PartyA", normalizeKenyanPhone(phoneNumber)),
+                    entry("PartyA", normalizedPhone),
                     entry("PartyB", mpesaShortcode),
-                    entry("PhoneNumber", normalizeKenyanPhone(phoneNumber)),
+                    entry("PhoneNumber", normalizedPhone),
                     entry("CallBackURL", finalCallbackUrl),
                     entry("AccountReference", "FOOD-ORDER"),
                     entry("TransactionDesc", "Food order payment")
@@ -511,29 +557,50 @@ public class PaymentService {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.error("Safaricom Daraja STK push HTTP error (status {}): {}", response.statusCode(), response.body());
                 return new PaymentResult(
                         false,
                         null,
-                        "M-Pesa payment initiation failed: " + response.body()
+                        "M-Pesa payment initiation failed: " + response.body(),
+                        PaymentStatus.FAILED
                 );
             }
 
             JsonNode json = objectMapper.readTree(response.body());
-            String reference = json.path("CheckoutRequestID").asText(
-                    "MPESA-" + UUID.randomUUID().toString().toUpperCase()
-            );
+            String responseCode = json.path("ResponseCode").asText("");
+            String customerMessage = json.path("CustomerMessage").asText("");
+            String responseDesc = json.path("ResponseDescription").asText("");
+            String errorMessage = json.path("errorMessage").asText("");
+            String checkoutRequestId = json.path("CheckoutRequestID").asText("");
 
+            if (!"0".equals(responseCode) || checkoutRequestId.isBlank()) {
+                String errorDetail = !customerMessage.isBlank() ? customerMessage
+                        : !responseDesc.isBlank() ? responseDesc
+                        : !errorMessage.isBlank() ? errorMessage
+                        : "Safaricom rejected the STK push request (Response Code: " + responseCode + ")";
+                log.error("Safaricom Daraja STK Push rejected: {}", response.body());
+                return new PaymentResult(
+                        false,
+                        null,
+                        "M-Pesa STK push failed: " + errorDetail,
+                        PaymentStatus.FAILED
+                );
+            }
+
+            log.info("Safaricom STK push initiated successfully. CheckoutRequestID: {}, Phone: {}", checkoutRequestId, normalizedPhone);
             return new PaymentResult(
                     true,
-                    reference,
-                    "M-Pesa STK push sent. Await callback confirmation.",
+                    checkoutRequestId,
+                    "M-Pesa STK push prompt sent to your phone. Please enter your M-Pesa PIN to complete payment.",
                     PaymentStatus.PENDING
             );
         } catch (Exception exception) {
+            log.error("Exception during M-Pesa STK push: {}", exception.getMessage(), exception);
             return new PaymentResult(
                     false,
                     null,
-                    "M-Pesa payment initiation failed: " + exception.getMessage()
+                    "M-Pesa payment initiation failed: " + exception.getMessage(),
+                    PaymentStatus.FAILED
             );
         }
     }
@@ -552,7 +619,8 @@ public class PaymentService {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new BusinessRuleException("Unable to get M-Pesa access token");
+            log.error("Failed to obtain M-Pesa access token (status {}): {}", response.statusCode(), response.body());
+            throw new BusinessRuleException("Unable to get M-Pesa access token from Safaricom: " + response.body());
         }
 
         return objectMapper.readTree(response.body()).path("access_token").asText();
@@ -566,14 +634,16 @@ public class PaymentService {
 
     public String normalizeKenyanPhone(String phoneNumber) {
         if (phoneNumber == null) return "";
-        String normalized = phoneNumber.trim().replaceAll("\\s+", "").replace("-", "");
+        String normalized = phoneNumber.trim().replaceAll("[^0-9+]", "");
 
         if (normalized.startsWith("+")) {
             normalized = normalized.substring(1);
         }
 
-        if (normalized.startsWith("0")) {
+        if (normalized.startsWith("0") && normalized.length() == 10) {
             normalized = "254" + normalized.substring(1);
+        } else if ((normalized.startsWith("7") || normalized.startsWith("1")) && normalized.length() == 9) {
+            normalized = "254" + normalized;
         }
 
         return normalized;

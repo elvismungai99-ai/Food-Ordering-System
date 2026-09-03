@@ -58,6 +58,7 @@ payments:
   mpesa:
     enabled: ${MPESA_ENABLED:false}
     environment: ${MPESA_ENVIRONMENT:sandbox}
+    transaction-type: ${MPESA_TRANSACTION_TYPE:CustomerPayBillOnline}
     consumer-key: ${MPESA_CONSUMER_KEY:}
     consumer-secret: ${MPESA_CONSUMER_SECRET:}
     shortcode: ${MPESA_SHORTCODE:}
